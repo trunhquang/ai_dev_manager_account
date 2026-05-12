@@ -8,7 +8,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export function Header() {
   const location = useLocation();
@@ -45,10 +46,10 @@ export function Header() {
         <div className="flex items-center gap-3">
           <DropdownMenu>
             <DropdownMenuTrigger render={
-              <Button variant="ghost" size="sm" className="h-8 gap-2 px-2 hover:bg-accent/50 rounded-none border border-border">
+              <button className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), "h-8 gap-2 px-2 hover:bg-accent/50 rounded-none border border-border cursor-pointer")}>
                 <Globe className="w-3.5 h-3.5" />
                 <span className="text-[10px] font-mono uppercase leading-none">{language}</span>
-              </Button>
+              </button>
             } />
             <DropdownMenuContent align="end" className="rounded-none">
               <DropdownMenuItem 

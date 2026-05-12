@@ -19,7 +19,7 @@
       "type": "object",
       "properties": {
         "email": { "type": "string" },
-        "provider": { "type": "string" },
+        "providers": { "type": "array", "items": { "type": "string" } },
         "packageType": { "type": "string" },
         "dailyTokenLimit": { "type": "integer" },
         "currentTokenLeft": { "type": "integer" },
@@ -28,7 +28,18 @@
         "lastUsedAt": { "type": "string", "format": "date-time" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["email", "provider", "packageType", "dailyTokenLimit", "status"]
+      "required": ["email", "providers", "packageType", "dailyTokenLimit", "status"]
+    },
+    "Provider": {
+      "title": "AI Provider",
+      "description": "Available AI providers for accounts",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "isCustom": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name"]
     },
     "Project": {
       "title": "Project",
@@ -40,6 +51,7 @@
         "type": { "type": "string", "enum": ["backend", "frontend", "mobile", "fullstack"] },
         "repositoryUrl": { "type": "string" },
         "currentAccountId": { "type": "string" },
+        "linkedAccountIds": { "type": "array", "items": { "type": "string" } },
         "priority": { "type": "string", "enum": ["low", "medium", "high"] },
         "status": { "type": "string", "enum": ["active", "on_hold", "completed"] },
         "createdAt": { "type": "string", "format": "date-time" }
@@ -115,6 +127,10 @@
     "handoffs": {
       "schema": "Handoff",
       "description": "Context handoff information"
+    },
+    "providers": {
+      "schema": "Provider",
+      "description": "Custom AI providers registry"
     }
   }
 }

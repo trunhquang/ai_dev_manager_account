@@ -44,12 +44,16 @@ function Button({
   className,
   variant = "default",
   size = "default",
+  nativeButton, // Explicitly destructure to avoid leaking to DOM
+  render,       // Explicitly destructure to avoid leaking to DOM
   ...props
 }: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
   return (
     <ButtonPrimitive
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      nativeButton={nativeButton}
+      render={render}
       {...props}
     />
   )

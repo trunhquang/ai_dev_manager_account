@@ -173,23 +173,81 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="p-0">
             {projects.slice(0, 5).map(p => (
-              <div key={p.id} className="flex items-center justify-between p-4 border-b border-border last:border-0 hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
-                <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 border border-border group-hover:border-background flex items-center justify-center">
-                    <Briefcase className="w-4 h-4" />
+                <div key={p.id} className="flex items-center justify-between p-4 border-b border-border last:border-0 hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 border border-border group-hover:border-background flex items-center justify-center">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-medium leading-none">{p.name}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5 pt-1.5 border-t border-border/20 group-hover:border-background/20">
+                        {accounts.filter(a => p.linkedAccountIds?.includes(a.id)).map(acc => (
+                          <div key={acc.id} className="flex items-center gap-1 group-h-opacity-100">
+                            <div className={cn(
+                              "w-1 h-1",
+                              acc.id === p.currentAccountId ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/40"
+                            )} />
+                            <span className="text-[8px] font-mono opacity-50 group-hover:opacity-100 uppercase tracking-tighter">
+                              {acc.email.split('@')[0]}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-[13px] font-medium leading-none">{p.name}</p>
-                    <p className="text-[10px] opacity-60 uppercase tracking-widest font-mono mt-1">{p.type}</p>
-                  </div>
+                  <Badge variant="outline" className="rounded-none border-current text-[10px] h-5 px-1.5 uppercase font-semibold">{p.status}</Badge>
                 </div>
-                <Badge variant="outline" className="rounded-none border-current text-[10px] h-5 px-1.5 uppercase font-semibold">{p.status}</Badge>
-              </div>
             ))}
           </CardContent>
         </Card>
 
-        <div className="bg-[#F9F9F8] p-6 space-y-6">
+        <Card className="rounded-none border-0 overflow-hidden">
+          <CardHeader className="py-3 border-b border-border">
+            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">Resource Activity Pool</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {accounts.slice(0, 5).map(acc => {
+              const linkedProjects = projects.filter(p => p.linkedAccountIds?.includes(acc.id));
+              return (
+                <div key={acc.id} className="flex items-center justify-between p-4 border-b border-border last:border-0 hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
+                  <div className="flex items-center gap-4">
+                    <div className="w-8 h-8 border border-border group-hover:border-background flex items-center justify-center">
+                      <Users className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <p className="text-[13px] font-medium leading-none">{acc.email.split('@')[0]}</p>
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5 pt-1.5 border-t border-border/20 group-hover:border-background/20">
+                        {linkedProjects.length === 0 ? (
+                          <span className="text-[8px] font-mono opacity-30 group-hover:opacity-50 uppercase tracking-tighter">Standby</span>
+                        ) : (
+                          linkedProjects.map(p => (
+                            <div key={p.id} className="flex items-center gap-1">
+                              <div className={cn(
+                                "w-1 h-1",
+                                p.currentAccountId === acc.id ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/40"
+                              )} />
+                              <span className={cn(
+                                "text-[8px] font-mono opacity-50 group-hover:opacity-100 uppercase tracking-tighter",
+                                p.currentAccountId === acc.id && "font-bold"
+                              )}>
+                                {p.name.substring(0, 10)}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-mono opacity-60 group-hover:opacity-100 leading-none">{acc.currentTokenLeft.toLocaleString()}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+
+        <div className="bg-[#F9F9F8] p-6 space-y-6 lg:col-span-2">
           <div className="space-y-4">
             <h3 className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70 border-b border-border pb-2">System Diagnostics</h3>
             <div className="space-y-4 opacity-80">

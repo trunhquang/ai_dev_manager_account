@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, Timestamp, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Project, ProjectType, ProjectPriority, ProjectStatus, AIAccount } from '@/types';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { 
   Table, 
   TableBody, 
@@ -94,6 +94,7 @@ export default function Projects() {
     try {
       await addDoc(collection(db, 'projects'), {
         ...newProject,
+        linkedAccountIds: newProject.currentAccountId ? [newProject.currentAccountId] : [],
         createdAt: Timestamp.now(),
       });
       toast.success('Project Created', { description: 'New development stream initialized.' });
@@ -144,9 +145,9 @@ export default function Projects() {
         {isAdmin && (
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger render={
-              <Button className="rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm">
+              <button className={cn(buttonVariants({ variant: 'default' }), "rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm cursor-pointer")}>
                 <Plus className="w-4 h-4 mr-2" /> {t('projects.addBtn')}
-              </Button>
+              </button>
             } />
             <DialogContent className="rounded-none bg-background border-border text-foreground sm:max-w-[500px]">
               <DialogHeader>
@@ -271,20 +272,32 @@ export default function Projects() {
                       </Badge>
                     </TableCell>
                     <TableCell className="px-6 py-4">
-                      {projectAccount ? (
-                        <div className="flex items-center gap-2">
-                          <div className={cn(
-                            "w-1.5 h-1.5 border border-border group-hover:border-background",
-                            projectAccount.status === 'active' ? "bg-[#10B981]" : "bg-[#F59E0B]"
-                          )} />
-                          <span className="text-[11px] font-mono opacity-80 group-hover:opacity-100">{projectAccount.email.split('@')[0]}</span>
+                      {project.linkedAccountIds && project.linkedAccountIds.length > 0 ? (
+                        <div className="flex flex-wrap items-center gap-2 max-w-[200px]">
+                          {accounts.filter(a => project.linkedAccountIds?.includes(a.id)).map(acc => {
+                            const isCurrent = acc.id === project.currentAccountId;
+                            return (
+                              <div key={acc.id} className="flex items-center gap-1.5 bg-background/5 border border-border/20 group-hover:bg-background/20 group-hover:border-background/30 px-1.5 py-0.5">
+                                <div className={cn(
+                                  "w-1 h-1",
+                                  isCurrent ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/50"
+                                )} />
+                                <span className={cn(
+                                  "text-[10px] font-mono uppercase tracking-tighter opacity-70 group-hover:opacity-100",
+                                  isCurrent && "font-bold"
+                                )}>
+                                  {acc.email.split('@')[0]}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       ) : (
-                        <span className="text-[10px] font-mono italic opacity-40 group-hover:opacity-60">UNASSIGNED</span>
+                        <span className="text-[10px] font-mono italic opacity-40 group-hover:opacity-60 uppercase">No Resources</span>
                       )}
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground" render={
+                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground" nativeButton={false} render={
                         <Link to={`/projects/${project.id}`} />
                       }>
                         <ChevronRight className="w-4 h-4" />

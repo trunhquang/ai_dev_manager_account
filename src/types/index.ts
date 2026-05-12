@@ -36,6 +36,7 @@ export interface Project {
   type: ProjectType;
   repositoryUrl?: string;
   currentAccountId?: string;
+  linkedAccountIds?: string[];
   priority: ProjectPriority;
   status: ProjectStatus;
   createdAt: Timestamp;

@@ -503,6 +503,7 @@ function SidebarMenuButton({
   size = "default",
   tooltip,
   className,
+  nativeButton, // Explicitly destructure to avoid leaking to DOM
   ...props
 }: useRender.ComponentProps<"button"> &
   React.ComponentProps<"button"> & {

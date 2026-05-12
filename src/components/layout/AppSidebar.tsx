@@ -57,7 +57,7 @@ export function AppSidebar() {
                 const isActive = location.pathname === item.path;
                 return (
                   <SidebarMenuItem key={item.path}>
-                    <SidebarMenuButton tooltip={item.title} className="p-0 h-auto" render={
+                    <SidebarMenuButton tooltip={item.title} className="p-0 h-auto" nativeButton={false} render={
                       <Link 
                         to={item.path} 
                         className={cn(

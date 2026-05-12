@@ -92,7 +92,9 @@ export const translations = {
         cooldown: 'Set Cooldown',
         ban: 'Ban Resource',
         purge: 'Purge Entry',
-        deleteConfirm: 'Delete this registry entry permanently?'
+        deleteConfirm: 'Delete this registry entry permanently?',
+        editProviders: 'Edit Providers',
+        saveChanges: 'Save Profile Changes'
       }
     },
     projectDetail: {
@@ -101,6 +103,17 @@ export const translations = {
         details: 'Details',
         variables: 'Variables',
         handoff: 'Handoff Status',
+        assets: 'AI Assets',
+      },
+      assets: {
+        title: 'Linked AI Resources',
+        subtitle: 'Multi-account pooling for computation',
+        active: 'Active Instance',
+        linkNew: 'Link New Asset',
+        noTokens: 'Exhausted',
+        unused: 'Standby',
+        setActive: 'Set Active',
+        unlink: 'Unlink Asset',
       },
       variables: {
         title: 'Compute Context Variables',
@@ -199,7 +212,9 @@ export const translations = {
         cooldown: 'Chế độ chờ',
         ban: 'Chặn tài nguyên',
         purge: 'Xóa vĩnh viễn',
-        deleteConfirm: 'Bạn có chắc chắn muốn xóa mục đăng ký này vĩnh viễn?'
+        deleteConfirm: 'Bạn có chắc chắn muốn xóa mục đăng ký này vĩnh viễn?',
+        editProviders: 'Chỉnh sửa Provider',
+        saveChanges: 'Lưu thay đổi hồ sơ'
       }
     },
     projectDetail: {
@@ -208,6 +223,17 @@ export const translations = {
         details: 'Chi tiết',
         variables: 'Biến môi trường',
         handoff: 'Trạng thái bàn giao',
+        assets: 'Tài nguyên AI',
+      },
+      assets: {
+        title: 'Tài nguyên AI đã liên kết',
+        subtitle: 'Kết hợp nhiều tài khoản cho tính toán',
+        active: 'Đang hoạt động',
+        linkNew: 'Liên kết tài nguyên mới',
+        noTokens: 'Hết Token',
+        unused: 'Chưa sử dụng',
+        setActive: 'Đặt làm mặc định',
+        unlink: 'Hủy liên kết',
       },
       variables: {
         title: 'Biến ngữ cảnh tính toán',

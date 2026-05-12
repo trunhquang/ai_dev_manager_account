@@ -27,7 +27,12 @@ import {
   Terminal,
   Database,
   Users,
-  Zap
+  Zap,
+  MoreVertical,
+  CheckCircle2,
+  AlertCircle,
+  Unlink,
+  Link as LinkIcon
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -38,6 +43,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { 
   Dialog, 
   DialogContent, 
   DialogHeader, 
@@ -45,11 +58,15 @@ import {
   DialogTrigger,
   DialogFooter
 } from '@/components/ui/dialog';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Plus } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 export default function ProjectDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { profile } = useAuthStore();
+  const { t } = useLanguage();
   const isAdmin = profile?.role === 'admin';
 
   const [project, setProject] = useState<Project | null>(null);
@@ -57,7 +74,9 @@ export default function ProjectDetail() {
   const [handoff, setHandoff] = useState<ProjectHandoff | null>(null);
   const [loading, setLoading] = useState(true);
   const [isTransferring, setIsTransferring] = useState(false);
+  const [isLinking, setIsLinking] = useState(false);
   const [transferData, setTransferData] = useState({ toAccountId: '', reason: '' });
+  const [selectedAccountId, setSelectedAccountId] = useState('');
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -154,9 +173,62 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleLinkAccount = async () => {
+    if (!project || !id || !selectedAccountId) return;
+    
+    try {
+      const currentLinked = project.linkedAccountIds || [];
+      if (currentLinked.includes(selectedAccountId)) {
+        toast.error('Account already linked');
+        return;
+      }
+
+      await updateDoc(doc(db, 'projects', id), {
+        linkedAccountIds: [...currentLinked, selectedAccountId]
+      });
+
+      toast.success('Account Linked', { description: 'New AI resource added to project pool.' });
+      setIsLinking(false);
+      setSelectedAccountId('');
+    } catch (error: any) {
+      toast.error('Linking failed', { description: error.message });
+    }
+  };
+
+  const handleUnlinkAccount = async (accountId: string) => {
+    if (!project || !id || !isAdmin) return;
+    if (project.currentAccountId === accountId) {
+      toast.error('Cannot unlink active account', { description: 'Switch active account first.' });
+      return;
+    }
+
+    try {
+      const currentLinked = project.linkedAccountIds || [];
+      await updateDoc(doc(db, 'projects', id), {
+        linkedAccountIds: currentLinked.filter(aid => aid !== accountId)
+      });
+      toast.success('Account Unlinked');
+    } catch (error: any) {
+      toast.error('Unlink failed', { description: error.message });
+    }
+  };
+
+  const handleSetActiveAccount = async (accountId: string) => {
+    if (!project || !id || !isAdmin) return;
+    try {
+      await updateDoc(doc(db, 'projects', id), {
+        currentAccountId: accountId
+      });
+      toast.success('Active Asset Switched');
+    } catch (error: any) {
+      toast.error('Update failed', { description: error.message });
+    }
+  };
+
   if (loading || !project) return <div className="h-40 flex items-center justify-center text-zinc-500 uppercase tracking-widest font-mono text-xs">Loading context...</div>;
 
   const currentAccount = accounts.find(a => a.id === project.currentAccountId);
+  const linkedAccounts = accounts.filter(a => project.linkedAccountIds?.includes(a.id));
 
   return (
     <div className="space-y-0 text-foreground">
@@ -244,6 +316,12 @@ export default function ProjectDetail() {
           <Tabs defaultValue="handoff" className="space-y-6">
             <TabsList className="bg-[#EBEAE7] border border-border rounded-none p-0 h-10 w-full justify-start overflow-x-auto gap-0">
               <TabsTrigger 
+                value="assets" 
+                className="rounded-none h-10 px-6 font-serif italic text-xs tracking-tight border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground"
+              >
+                <Database className="w-3.5 h-3.5 mr-2" /> {t('projectDetail.tabs.assets')}
+              </TabsTrigger>
+              <TabsTrigger 
                 value="handoff" 
                 className="rounded-none h-10 px-6 font-serif italic text-xs tracking-tight border-r border-border data-[state=active]:bg-background data-[state=active]:text-foreground"
               >
@@ -262,6 +340,109 @@ export default function ProjectDetail() {
                 <ArrowRightLeft className="w-3.5 h-3.5 mr-2" /> Transfer Index
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="assets" className="m-0">
+              <section className="bg-background border border-border">
+                <div className="p-6 border-b border-border flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xl font-serif italic tracking-tight">{t('projectDetail.assets.title')}</h3>
+                    <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-widest mt-1 opacity-60">{t('projectDetail.assets.subtitle')}</p>
+                  </div>
+                  {isAdmin && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="rounded-none font-serif italic text-xs"
+                      onClick={() => setIsLinking(true)}
+                    >
+                      <Plus className="w-3.5 h-3.5 mr-2" /> {t('projectDetail.assets.linkNew')}
+                    </Button>
+                  )}
+                </div>
+                <div className="p-0">
+                  <Table>
+                    <TableHeader className="bg-[#F9F9F8]">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead className="font-serif italic text-[11px] uppercase tracking-widest h-10 px-6">Account</TableHead>
+                        <TableHead className="font-serif italic text-[11px] uppercase tracking-widest h-10 px-6">Status</TableHead>
+                        <TableHead className="font-serif italic text-[11px] uppercase tracking-widest h-10 px-6">Quota</TableHead>
+                        <TableHead className="font-serif italic text-[11px] uppercase tracking-widest h-10 px-6 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {linkedAccounts.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={4} className="h-32 text-center text-muted-foreground font-mono text-[10px] uppercase opacity-40">
+                            No persistent resources linked to this stream pool
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        linkedAccounts.map(account => {
+                          const isActive = account.id === project.currentAccountId;
+                          const usage = Math.round((account.currentTokenLeft / account.dailyTokenLimit) * 100);
+                          const isExhausted = account.currentTokenLeft <= 0;
+                          
+                          return (
+                            <TableRow key={account.id} className="border-b border-border group">
+                              <TableCell className="px-6 py-4">
+                                <div className="space-y-1">
+                                  <p className="text-xs font-medium">{account.email}</p>
+                                  <p className="text-[9px] font-mono opacity-50 uppercase tracking-tighter">
+                                    Providers: {account.providers?.join(', ')}
+                                  </p>
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-6 py-4">
+                                {isActive ? (
+                                  <Badge className="bg-[#10B981]/10 text-[#10B981] border-[#10B981]/20 rounded-none text-[9px] font-mono h-5">ACTIVE</Badge>
+                                ) : isExhausted ? (
+                                  <Badge className="bg-red-500/10 text-red-500 border-red-500/20 rounded-none text-[9px] font-mono h-5">EXHAUSTED</Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-muted-foreground border-border rounded-none text-[9px] font-mono h-5">STANDBY</Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="px-6 py-4">
+                                <div className="w-32 space-y-1.5">
+                                  <div className="flex justify-between text-[9px] font-mono opacity-60 uppercase">
+                                    <span>{account.currentTokenLeft.toLocaleString()} TOKENS</span>
+                                    <span>{usage}%</span>
+                                  </div>
+                                  <Progress value={usage} className="h-1 rounded-none bg-border" />
+                                </div>
+                              </TableCell>
+                              <TableCell className="px-6 py-4 text-right">
+                                {isAdmin && (
+                                  <div className="flex items-center justify-end gap-1">
+                                    {!isActive && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => handleSetActiveAccount(account.id)}
+                                        className="h-8 text-[10px] font-serif italic text-muted-foreground hover:text-foreground rounded-none"
+                                      >
+                                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> {t('projectDetail.assets.setActive')}
+                                      </Button>
+                                    )}
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      onClick={() => handleUnlinkAccount(account.id)}
+                                      className="h-8 text-[10px] font-serif italic text-destructive hover:text-destructive hover:bg-destructive/5 rounded-none"
+                                    >
+                                      <Unlink className="w-3.5 h-3.5 mr-1" /> {t('projectDetail.assets.unlink')}
+                                    </Button>
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </section>
+            </TabsContent>
 
             <TabsContent value="handoff" className="m-0">
               <section className="bg-background border border-border">
@@ -383,6 +564,43 @@ export default function ProjectDetail() {
             <DialogFooter className="pt-4 gap-2">
               <Button variant="ghost" className="rounded-none font-serif italic" onClick={() => setIsTransferring(false)}>Abort</Button>
               <Button onClick={handleTransfer} className="rounded-none bg-foreground text-background px-8 font-serif italic">Confirm Migration</Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isLinking} onOpenChange={setIsLinking}>
+        <DialogContent className="rounded-none bg-background border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle className="font-serif italic text-lg tracking-tight">{t('projectDetail.assets.linkNew')}</DialogTitle>
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest">Expansion Protocol</p>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Available Resources</Label>
+              <Select onValueChange={setSelectedAccountId}>
+                <SelectTrigger className="rounded-none border-border">
+                  <SelectValue placeholder="Select resource to link" />
+                </SelectTrigger>
+                <SelectContent className="rounded-none bg-background border-border">
+                  {accounts
+                    .filter(a => !project.linkedAccountIds?.includes(a.id) && a.status === 'active')
+                    .map(acc => (
+                      <SelectItem key={acc.id} value={acc.id}>{acc.email}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter className="pt-4 gap-2">
+              <Button variant="ghost" className="rounded-none font-serif italic" onClick={() => setIsLinking(false)}>Cancel</Button>
+              <Button 
+                onClick={handleLinkAccount} 
+                className="rounded-none bg-foreground text-background px-8 font-serif italic"
+                disabled={!selectedAccountId}
+              >
+                Link Resource
+              </Button>
             </DialogFooter>
           </div>
         </DialogContent>
