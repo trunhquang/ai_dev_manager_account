@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // -------------------------------------------------------------------------
+    // H1: GLOBAL HELPERS
+    // -------------------------------------------------------------------------
+    function isSignedIn() { return request.auth != null; }
+    function isVerified() { return isSignedIn(); }
+    function isValidId(id) { return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$'); }
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    
+    // User Role Helpers
+    function isAdmin() { 
+      return isSignedIn() && (
+        request.auth.token.email == 'trunhquang@gmail.com' || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    
+    function isDeveloper() {
+      return isSignedIn() && (
+        request.auth.token.email == 'trunhquang@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'developer' || 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'))
+      );
+    }
+
+    // -------------------------------------------------------------------------
+    // H2: ENTITY VALIDATORS
+    // -------------------------------------------------------------------------
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+             && data.email is string && data.email.size() > 5 
+             && (data.role == 'admin' || data.role == 'developer');
+    }
+
+    function isValidAccount(data) {
+      return data.email is string && data.provider is string
+             && data.dailyTokenLimit is int && data.dailyTokenLimit >= 0
+             && data.status in ['active', 'cooldown', 'banned'];
+    }
+
+    function isValidProject(data) {
+      return data.name is string && data.name.size() > 1
+             && data.type in ['backend', 'frontend', 'mobile', 'fullstack']
+             && data.priority in ['low', 'medium', 'high']
+             && data.status in ['active', 'on_hold', 'completed'];
+    }
+
+    function isValidSession(data) {
+      return isValidId(data.projectId) && isValidId(data.accountId)
+             && data.startTime is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // DENY ALL BY DEFAULT
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // COLLECTIONS
+    // -------------------------------------------------------------------------
+
+    match /users/{userId} {
+      allow get: if isVerified() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isVerified() && userId == request.auth.uid && isValidUser(incoming());
+      allow update: if isVerified() && userId == request.auth.uid 
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email'])
+                    && isValidUser(incoming());
+      allow update: if isAdmin();
+    }
+
+    match /accounts/{accountId} {
+      allow read: if isDeveloper();
+      allow create: if isAdmin() && isValidAccount(incoming());
+      allow update: if isAdmin() && isValidAccount(incoming());
+      allow update: if isDeveloper() 
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['currentTokenLeft', 'lastUsedAt'])
+                    && isValidAccount(incoming());
+    }
+
+    match /projects/{projectId} {
+      allow read: if isDeveloper();
+      allow create: if isAdmin() && isValidProject(incoming());
+      allow update: if isAdmin() && isValidProject(incoming());
+      allow update: if isDeveloper() 
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'currentAccountId'])
+                    && isValidProject(incoming());
+    }
+
+    match /transfers/{transferId} {
+      allow read: if isDeveloper();
+      allow create: if isDeveloper(); // Usually triggered by a developer transferring project
+      // Transfers are usually immutable logs
+    }
+
+    match /sessions/{sessionId} {
+      allow read: if isDeveloper();
+      allow create: if isDeveloper() && isValidSession(incoming());
+      allow update: if isDeveloper() && isValidSession(incoming());
+    }
+
+    match /handoffs/{handoffId} {
+      allow read: if isDeveloper();
+      allow write: if isDeveloper();
+    }
+  }
+}

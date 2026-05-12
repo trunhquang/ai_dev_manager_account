@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "System user profiles",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "developer"] },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "AIAccount": {
+      "title": "AI Account",
+      "description": "AI development accounts (OnSpace, OpenAI, etc.)",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "provider": { "type": "string" },
+        "packageType": { "type": "string" },
+        "dailyTokenLimit": { "type": "integer" },
+        "currentTokenLeft": { "type": "integer" },
+        "status": { "type": "string", "enum": ["active", "cooldown", "banned"] },
+        "note": { "type": "string" },
+        "lastUsedAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["email", "provider", "packageType", "dailyTokenLimit", "status"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Development projects",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["backend", "frontend", "mobile", "fullstack"] },
+        "repositoryUrl": { "type": "string" },
+        "currentAccountId": { "type": "string" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "status": { "type": "string", "enum": ["active", "on_hold", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "type", "priority", "status"]
+    },
+    "Transfer": {
+      "title": "Transfer",
+      "description": "Project transfer history",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "fromAccountId": { "type": "string" },
+        "toAccountId": { "type": "string" },
+        "transferredAt": { "type": "string", "format": "date-time" },
+        "reason": { "type": "string" }
+      },
+      "required": ["projectId", "transferredAt"]
+    },
+    "Session": {
+      "title": "Session",
+      "description": "Development usage sessions",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "accountId": { "type": "string" },
+        "startTime": { "type": "string", "format": "date-time" },
+        "endTime": { "type": "string", "format": "date-time" },
+        "estimatedTokensUsed": { "type": "integer" },
+        "completedTasks": { "type": "array", "items": { "type": "string" } },
+        "pendingTasks": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["projectId", "accountId", "startTime"]
+    },
+    "Handoff": {
+      "title": "Handoff",
+      "description": "Context handoff for projects",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "architectureSummary": { "type": "string" },
+        "completedTasks": { "type": "string" },
+        "pendingTasks": { "type": "string" },
+        "codingConventions": { "type": "string" },
+        "importantPrompts": { "type": "string" },
+        "bugFixNotes": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["projectId", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "users": {
+      "schema": "User",
+      "description": "System users"
+    },
+    "accounts": {
+      "schema": "AIAccount",
+      "description": "AI accounts for coding"
+    },
+    "projects": {
+      "schema": "Project",
+      "description": "Development projects"
+    },
+    "transfers": {
+      "schema": "Transfer",
+      "description": "Project transfer logs"
+    },
+    "sessions": {
+      "schema": "Session",
+      "description": "Usage sessions"
+    },
+    "handoffs": {
+      "schema": "Handoff",
+      "description": "Context handoff information"
+    }
+  }
+}

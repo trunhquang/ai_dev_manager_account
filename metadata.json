@@ -1,0 +1,6 @@
+{
+  "name": "AI Dev Account Manager",
+  "description": "Internal dashboard for managing AI development accounts, token usage, and project handoffs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}

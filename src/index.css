@@ -1,0 +1,104 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/geist";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-serif);
+    --font-sans: 'Inter', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    --font-serif: 'Georgia', serif;
+    --font-mono: 'Courier New', Courier, monospace;
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --radius-sm: 0px;
+    --radius-md: 0px;
+    --radius-lg: 0px;
+    --radius-xl: 0px;
+}
+
+:root {
+    --background: #F4F4F2;
+    --foreground: #1A1A1A;
+    
+    --card: #FFFFFF;
+    --card-foreground: #1A1A1A;
+    
+    --popover: #FFFFFF;
+    --popover-foreground: #1A1A1A;
+    
+    --primary: #1A1A1A;
+    --primary-foreground: #F4F4F2;
+    
+    --secondary: #EBEAE7;
+    --secondary-foreground: #1A1A1A;
+    
+    --muted: #EBEAE7;
+    --muted-foreground: #666666;
+    
+    --accent: #2563EB;
+    --accent-foreground: #FFFFFF;
+    
+    --destructive: #EF4444;
+    --destructive-foreground: #FFFFFF;
+    
+    --border: #1A1A1A;
+    --input: #1A1A1A;
+    --ring: #2563EB;
+    
+    --radius: 0px;
+
+    --sidebar: #EBEAE7;
+    --sidebar-foreground: #1A1A1A;
+    --sidebar-primary: #2563EB;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #FFFFFF;
+    --sidebar-accent-foreground: #1A1A1A;
+    --sidebar-border: #1A1A1A;
+    --sidebar-ring: #2563EB;
+}
+
+.dark {
+    /* Keeping it minimal for now as the requested theme is light-centric */
+    --background: #1A1A1A;
+    --foreground: #F4F4F2;
+    --card: #242424;
+    --card-foreground: #F4F4F2;
+    --border: #333333;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    }
+  html {
+    @apply font-sans;
+    }
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif italic;
+  }
+}
