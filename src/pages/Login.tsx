@@ -30,7 +30,12 @@ export default function Login() {
         });
       } else if (error.code === 'auth/network-request-failed') {
         toast.error(t('login.networkError'), { 
-          description: t('login.networkErrorDesc') 
+          description: t('login.networkErrorDesc'),
+          action: {
+            label: t('login.openNewTab'),
+            onClick: () => window.open(window.location.href, '_blank')
+          },
+          duration: 10000
         });
       } else {
         toast.error(t('login.authFailed'), { description: error.message });
