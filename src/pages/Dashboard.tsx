@@ -5,18 +5,6 @@ import { db } from '@/lib/firebase';
 import { AIAccount, Project, DevSession } from '@/types';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Cell,
-  PieChart,
-  Pie
-} from 'recharts';
-import { 
   Users, 
   Briefcase, 
   Activity, 
@@ -51,18 +39,10 @@ export default function Dashboard() {
   const activeAccounts = accounts.filter(a => a.status === 'active').length;
   const activeProjects = projects.filter(p => p.status === 'active').length;
   const lowTokenAccounts = accounts.filter(a => a.currentTokenLeft < (a.dailyTokenLimit * 0.2)).length;
-
-  const chartData = accounts.map(a => ({
-    name: a.email.split('@')[0],
-    usage: Math.round(((a.dailyTokenLimit - a.currentTokenLeft) / a.dailyTokenLimit) * 100),
-    tokens: a.currentTokenLeft
-  })).sort((a, b) => b.usage - a.usage).slice(0, 5);
-
-  const statusData = [
-    { name: 'Active', value: activeAccounts, color: '#10b981' },
-    { name: 'Cooldown', value: accounts.filter(a => a.status === 'cooldown').length, color: '#f59e0b' },
-    { name: 'Banned', value: accounts.filter(a => a.status === 'banned').length, color: '#ef4444' },
-  ];
+  
+  const totalUsagePercent = accounts.length > 0 
+    ? Math.round(accounts.reduce((acc, a) => acc + ((a.dailyTokenLimit - a.currentTokenLeft) / a.dailyTokenLimit), 0) / accounts.length * 100)
+    : 0;
 
   return (
     <div className="space-y-0.5 bg-border border-b border-border">
@@ -81,7 +61,7 @@ export default function Dashboard() {
         />
         <StatCard 
           title={t('dashboard.stats.avgTokenUsage')} 
-          value={`${Math.round(chartData.reduce((acc, curr) => acc + curr.usage, 0) / (chartData.length || 1))}%`} 
+          value={`${totalUsagePercent}%`} 
           subtitle="System efficiency" 
           icon={Zap} 
         />
@@ -94,85 +74,13 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 bg-background">
-        <Card className="lg:col-span-2 rounded-none border-0 border-r border-border">
-          <CardHeader className="bg-background border-b border-border py-3">
-            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">{t('dashboard.charts.usageTitle')}</CardTitle>
-          </CardHeader>
-          <CardContent className="h-80 p-6">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ left: 40 }}>
-                <CartesianGrid strokeDasharray="0" stroke="#1A1A1A" horizontal={true} vertical={false} opacity={0.1} />
-                <XAxis type="number" hide />
-                <YAxis 
-                  dataKey="name" 
-                  type="category" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fill: '#1A1A1A', fontSize: 10, fontFamily: 'Courier New, monospace', opacity: 0.6 }}
-                />
-                <Tooltip 
-                  cursor={{ fill: 'rgba(0,0,0,0.05)' }}
-                  contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #1A1A1A', borderRadius: '0px', fontSize: '10px', fontFamily: 'Courier New' }}
-                />
-                <Bar dataKey="usage" radius={0}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.usage > 80 ? '#EF4444' : '#2563EB'} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-none border-0">
-          <CardHeader className="bg-background border-b border-border py-3">
-            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">{t('dashboard.charts.statusDistribution')}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col items-center justify-center space-y-8 p-6">
-            <div className="h-48 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={0}
-                    dataKey="value"
-                    stroke="#1A1A1A"
-                    strokeWidth={0.5}
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#FFFFFF', border: '1px solid #1A1A1A', borderRadius: '0px', fontFamily: 'Courier New' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="grid grid-cols-2 gap-4 w-full">
-              {statusData.map(s => (
-                <div key={s.name} className="flex items-center gap-2">
-                  <div className="w-2 h-2 border border-border" style={{ backgroundColor: s.color }} />
-                  <span className="text-[10px] uppercase font-mono text-muted-foreground tracking-tighter">{s.name}: {s.value}</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 bg-background border-t border-border">
         <Card className="rounded-none border-0 border-r border-border">
           <CardHeader className="py-3 border-b border-border">
             <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">Active Project Registry</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
-            {projects.slice(0, 5).map(p => (
+            {projects.map(p => (
                 <div key={p.id} className="flex items-center justify-between p-4 border-b border-border last:border-0 hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
                   <div className="flex items-center gap-4">
                     <div className="w-8 h-8 border border-border group-hover:border-background flex items-center justify-center">
@@ -185,9 +93,12 @@ export default function Dashboard() {
                           <div key={acc.id} className="flex items-center gap-1 group-h-opacity-100">
                             <div className={cn(
                               "w-1 h-1",
-                              acc.id === p.currentAccountId ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/40"
+                              acc.id === p.currentAccountId ? "bg-[#10B981]" : "bg-muted-foreground/30 group-hover:bg-background/40"
                             )} />
-                            <span className="text-[8px] font-mono opacity-50 group-hover:opacity-100 uppercase tracking-tighter">
+                            <span className={cn(
+                              "text-[8px] font-mono uppercase tracking-tighter",
+                              acc.id === p.currentAccountId ? "opacity-100 font-bold" : "opacity-40 group-hover:opacity-80"
+                            )}>
                               {acc.email.split('@')[0]}
                             </span>
                           </div>
@@ -195,7 +106,10 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                  <Badge variant="outline" className="rounded-none border-current text-[10px] h-5 px-1.5 uppercase font-semibold">{p.status}</Badge>
+                  <Badge variant="outline" className={cn(
+                    "rounded-none border-current text-[10px] h-5 px-1.5 uppercase font-semibold",
+                    p.status === 'active' ? "text-[#10B981]" : "text-muted-foreground"
+                  )}>{p.status}</Badge>
                 </div>
             ))}
           </CardContent>
@@ -205,8 +119,8 @@ export default function Dashboard() {
           <CardHeader className="py-3 border-b border-border">
             <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">Resource Activity Pool</CardTitle>
           </CardHeader>
-          <CardContent className="p-0">
-            {accounts.slice(0, 5).map(acc => {
+          <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+            {accounts.map(acc => {
               const linkedProjects = projects.filter(p => p.linkedAccountIds?.includes(acc.id));
               return (
                 <div key={acc.id} className="flex items-center justify-between p-4 border-b border-border last:border-0 hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
@@ -220,26 +134,31 @@ export default function Dashboard() {
                         {linkedProjects.length === 0 ? (
                           <span className="text-[8px] font-mono opacity-30 group-hover:opacity-50 uppercase tracking-tighter">Standby</span>
                         ) : (
-                          linkedProjects.map(p => (
-                            <div key={p.id} className="flex items-center gap-1">
-                              <div className={cn(
-                                "w-1 h-1",
-                                p.currentAccountId === acc.id ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/40"
-                              )} />
-                              <span className={cn(
-                                "text-[8px] font-mono opacity-50 group-hover:opacity-100 uppercase tracking-tighter",
-                                p.currentAccountId === acc.id && "font-bold"
-                              )}>
-                                {p.name.substring(0, 10)}
-                              </span>
-                            </div>
-                          ))
+                          linkedProjects.map(p => {
+                            const isCurrent = p.currentAccountId === acc.id;
+                            return (
+                              <div key={p.id} className="flex items-center gap-1">
+                                <div className={cn(
+                                  "w-1 h-1",
+                                  p.status === 'active' ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/40"
+                                )} />
+                                <span className={cn(
+                                  "text-[8px] font-mono uppercase tracking-tighter",
+                                  isCurrent ? "opacity-100 font-bold underline decoration-accent/50" : "opacity-40 group-hover:opacity-80"
+                                )}>
+                                  {p.name.substring(0, 10)}
+                                  {isCurrent && <span className="ml-0.5 text-[#10B981]">●</span>}
+                                </span>
+                              </div>
+                            );
+                          })
                         )}
                       </div>
                     </div>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] font-mono opacity-60 group-hover:opacity-100 leading-none">{acc.currentTokenLeft.toLocaleString()}</p>
+                    <p className="text-[8px] font-mono opacity-30 group-hover:opacity-60 uppercase mt-1">Tokens Remaining</p>
                   </div>
                 </div>
               );
@@ -247,27 +166,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <div className="bg-[#F9F9F8] p-6 space-y-6 lg:col-span-2">
-          <div className="space-y-4">
-            <h3 className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70 border-b border-border pb-2">System Diagnostics</h3>
-            <div className="space-y-4 opacity-80">
-              <div className="p-4 bg-background border border-border">
-                <p className="font-serif italic text-sm border-b border-border pb-2 mb-2">Internal Flux Monitor</p>
-                <p className="text-[10px] font-mono opacity-60 mb-2 leading-none">STATUS: NOMINAL | FREQ: 60Hz</p>
-                <div className="text-xs leading-relaxed opacity-80">
-                  Real-time monitoring of AI development streams. All systems operating within standard parameters.
-                </div>
-              </div>
-              <div className="p-4 bg-background border border-border">
-                <p className="font-serif italic text-sm border-b border-border pb-2 mb-2">Context Handoff Tool</p>
-                <p className="text-[10px] font-mono opacity-60 mb-2 leading-none">VERSION: 4.2.0 | REGION: GLOBAL</p>
-                <div className="text-xs leading-relaxed opacity-80">
-                  Pending transfers: 03. Optimization of cross-account context mapping in progress.
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
