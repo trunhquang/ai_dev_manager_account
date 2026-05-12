@@ -20,14 +20,29 @@ export const translations = {
       search: 'Search...',
       nothingFound: 'Nothing found',
     },
+    dashboard: {
+      stats: {
+        activeAccounts: 'Active Accounts',
+        projectsInPlay: 'Projects in Play',
+        avgTokenUsage: 'Avg Token Usage',
+        quotaAlerts: 'Quota Alerts',
+      },
+      charts: {
+        usageTitle: 'Account Quota Usage (%)',
+        statusDistribution: 'System Status Distribution',
+      }
+    },
     login: {
       title: 'Dev Manager',
       subtitle: 'Internal System Access',
-      description: 'Sign in with your corporate Google account to access variables, handoffs, and project credentials.',
+      description: 'Sign in with your corporate Google account to access variables, handoffs, and project credentials. If the login popup is blocked, try opening the app in a new tab.',
       button: 'Sign in with Google',
       networkError: 'Network Error',
       networkErrorDesc: 'Could not connect to authentication server. Please check your connection or ad-blocker.',
       authFailed: 'Authentication Failed',
+      popupClosed: 'Login Popup Blocked or Closed',
+      popupClosedDesc: 'The authentication window was closed or blocked. If you didn\'t close it, please try opening the app in a new tab.',
+      openNewTab: 'Open in New Tab',
     },
     sidebar: {
       brand: 'AI Dev Manager',
@@ -70,6 +85,14 @@ export const translations = {
         tierLabel: 'Account Tier',
         newProvider: '+ NEW PROVIDER',
         providerPlaceholder: 'Provider Name (e.g. Gemini)',
+      },
+      actions: {
+        title: 'System Actions',
+        active: 'Mark Active',
+        cooldown: 'Set Cooldown',
+        ban: 'Ban Resource',
+        purge: 'Purge Entry',
+        deleteConfirm: 'Delete this registry entry permanently?'
       }
     },
     projectDetail: {
@@ -104,14 +127,29 @@ export const translations = {
       search: 'Tìm kiếm...',
       nothingFound: 'Không tìm thấy kết quả',
     },
+    dashboard: {
+      stats: {
+        activeAccounts: 'Tài khoản hoạt động',
+        projectsInPlay: 'Dự án đang chạy',
+        avgTokenUsage: 'Sử dụng Token trung bình',
+        quotaAlerts: 'Cảnh báo định mức',
+      },
+      charts: {
+        usageTitle: 'Mức sử dụng định mức tài khoản (%)',
+        statusDistribution: 'Phân phối trạng thái hệ thống',
+      }
+    },
     login: {
       title: 'Dev Manager',
       subtitle: 'Truy cập Hệ thống Nội bộ',
-      description: 'Đăng nhập bằng tài khoản Google doanh nghiệp để truy cập biến môi trường, bàn giao và thông tin xác thực dự án.',
+      description: 'Đăng nhập bằng tài khoản Google doanh nghiệp để truy cập biến môi trường, bàn giao và thông tin xác thực dự án. Nếu cửa sổ đăng nhập bị chặn, hãy thử mở ứng dụng trong tab mới.',
       button: 'Đăng nhập với Google',
       networkError: 'Lỗi mạng',
       networkErrorDesc: 'Không thể kết nối với máy chủ xác thực. Vui lòng kiểm tra kết nối hoặc trình chặn quảng cáo.',
       authFailed: 'Xác thực thất bại',
+      popupClosed: 'Cửa sổ đăng nhập bị chặn hoặc bị đóng',
+      popupClosedDesc: 'Cửa sổ xác thực đã bị đóng hoặc bị chặn. Nếu bạn không tự đóng, vui lòng thử mở ứng dụng trong tab mới.',
+      openNewTab: 'Mở trong Tab Mới',
     },
     sidebar: {
       brand: 'AI Dev Manager',
@@ -154,6 +192,14 @@ export const translations = {
         tierLabel: 'Cấp độ tài khoản',
         newProvider: '+ THÊM NHÀ CUNG CẤP',
         providerPlaceholder: 'Tên nhà cung cấp (vd: Gemini)',
+      },
+      actions: {
+        title: 'Thao tác hệ thống',
+        active: 'Đang hoạt động',
+        cooldown: 'Chế độ chờ',
+        ban: 'Chặn tài nguyên',
+        purge: 'Xóa vĩnh viễn',
+        deleteConfirm: 'Bạn có chắc chắn muốn xóa mục đăng ký này vĩnh viễn?'
       }
     },
     projectDetail: {

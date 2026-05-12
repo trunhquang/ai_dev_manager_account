@@ -36,12 +36,23 @@ import {
   CheckCircle2,
   Ban,
   Filter,
-  Users
+  Users,
+  Trash2
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/authStore';
 import { cn } from '@/lib/utils';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
@@ -50,13 +61,14 @@ export default function Accounts() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isCustomProvider, setIsCustomProvider] = useState(false);
   const [customProvider, setCustomProvider] = useState('');
+  const { profile } = useAuthStore();
   const { language, setLanguage, t } = useLanguage();
   const isAdmin = profile?.role === 'admin';
 
   // State for new account form
   const [newAccount, setNewAccount] = useState({
     email: '',
-    provider: 'OnSpace',
+    providers: ['OnSpace'] as string[],
     packageType: 'Pro',
     dailyTokenLimit: 100000,
     status: 'active' as AIAccountStatus,
@@ -84,12 +96,20 @@ export default function Accounts() {
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const provider = isCustomProvider ? customProvider : newAccount.provider;
-      if (!provider) throw new Error('Provider is required');
+      const allProviders = [...newAccount.providers];
+      if (isCustomProvider && customProvider && !allProviders.includes(customProvider)) {
+        allProviders.push(customProvider);
+      }
+
+      if (allProviders.length === 0) throw new Error('At least one provider is required');
 
       await addDoc(collection(db, 'accounts'), {
-        ...newAccount,
-        provider,
+        email: newAccount.email,
+        providers: allProviders,
+        packageType: newAccount.packageType,
+        dailyTokenLimit: newAccount.dailyTokenLimit,
+        status: newAccount.status,
+        note: newAccount.note,
         currentTokenLeft: newAccount.dailyTokenLimit,
         createdAt: Timestamp.now(),
         lastUsedAt: null
@@ -100,7 +120,7 @@ export default function Accounts() {
       setCustomProvider('');
       setNewAccount({
         email: '',
-        provider: 'OnSpace',
+        providers: ['OnSpace'],
         packageType: 'Pro',
         dailyTokenLimit: 100000,
         status: 'active',
@@ -121,9 +141,19 @@ export default function Accounts() {
     }
   };
 
+  const handleDeleteAccount = async (id: string) => {
+    if (!isAdmin || !window.confirm(t('accounts.actions.deleteConfirm'))) return;
+    try {
+      await deleteDoc(doc(db, 'accounts', id));
+      toast.success('Account Deleted');
+    } catch (error: any) {
+      toast.error('Deletion failed', { description: error.message });
+    }
+  };
+
   const filteredAccounts = accounts.filter(acc => 
     acc.email.toLowerCase().includes(search.toLowerCase()) || 
-    acc.provider.toLowerCase().includes(search.toLowerCase())
+    acc.providers.some(p => p.toLowerCase().includes(search.toLowerCase()))
   );
 
   const getStatusBadge = (status: AIAccountStatus) => {
@@ -143,15 +173,15 @@ export default function Accounts() {
     <div className="space-y-0 text-foreground">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border bg-background p-6">
         <div>
-          <h1 className="text-2xl font-serif italic tracking-tight text-foreground">AI Account Registry</h1>
-          <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-[0.1em] mt-1 opacity-60">System Inventory / Token Burn Metrics</p>
+          <h1 className="text-2xl font-serif italic tracking-tight text-foreground">{t('accounts.title')}</h1>
+          <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-[0.1em] mt-1 opacity-60">{t('accounts.subtitle')}</p>
         </div>
 
         {isAdmin && (
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger render={
               <Button className="rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm">
-                <Plus className="w-4 h-4 mr-2" /> Add Entry
+                <Plus className="w-4 h-4 mr-2" /> {t('accounts.addBtn')}
               </Button>
             } />
             <DialogContent className="rounded-none bg-background border-border text-foreground sm:max-w-[500px]">
@@ -172,63 +202,73 @@ export default function Accounts() {
                     required
                   />
                 </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="provider" className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('accounts.dialog.providerLabel')}</Label>
-                      <Select 
-                        value={isCustomProvider ? "custom" : newAccount.provider} 
-                        onValueChange={v => {
-                          if (v === "custom") {
-                            setIsCustomProvider(true);
-                          } else {
-                            setIsCustomProvider(false);
-                            setNewAccount({...newAccount, provider: v});
-                          }
-                        }}
-                      >
-                        <SelectTrigger id="provider" className="rounded-none bg-background border-border uppercase font-mono text-[10px]">
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-none bg-background border-border text-foreground">
-                          <SelectItem value="OnSpace">ONSPACE</SelectItem>
-                          <SelectItem value="OpenAI">OPENAI</SelectItem>
-                          <SelectItem value="Anthropic">ANTHROPIC</SelectItem>
-                          <SelectItem value="Cursor">CURSOR</SelectItem>
-                          <SelectItem value="custom" className="text-accent font-bold italic">{t('accounts.dialog.newProvider')}</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      
-                      {isCustomProvider && (
-                        <Input 
-                          placeholder={t('accounts.dialog.providerPlaceholder')}
-                          value={customProvider}
-                          onChange={e => setCustomProvider(e.target.value)}
-                          className="rounded-none border-border mt-2 h-8 text-[11px] uppercase font-mono"
-                          autoFocus
-                          required
-                        />
-                      )}
+                  <div className="space-y-3">
+                    <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('accounts.dialog.providerLabel')}</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['OnSpace', 'OpenAI', 'Anthropic', 'Cursor'].map((p) => (
+                        <div key={p} className="flex items-center gap-2 border border-border p-2 hover:bg-accent/50 transition-colors">
+                          <input 
+                            type="checkbox"
+                            className="w-3 h-3 accent-foreground"
+                            checked={newAccount.providers.includes(p)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewAccount({...newAccount, providers: [...newAccount.providers, p]});
+                              } else {
+                                setNewAccount({...newAccount, providers: newAccount.providers.filter(i => i !== p)});
+                              }
+                            }}
+                          />
+                          <span className="font-mono text-[10px] uppercase">{p}</span>
+                        </div>
+                      ))}
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="package" className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('accounts.dialog.tierLabel')}</Label>
-                      <Select 
-                        value={newAccount.packageType} 
-                        onValueChange={v => setNewAccount({...newAccount, packageType: v})}
+                  </div>
+                  
+                  <div className="space-y-2 border-t border-border pt-4">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Custom Providers</Label>
+                      <Button 
+                        type="button"
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 text-[9px] uppercase font-mono"
+                        onClick={() => setIsCustomProvider(!isCustomProvider)}
                       >
-                        <SelectTrigger id="package" className="rounded-none bg-background border-border uppercase font-mono text-[10px]">
-                          <SelectValue placeholder="Select Tier" />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-none bg-background border-border text-foreground">
-                          <SelectItem value="Free">FREE</SelectItem>
-                          <SelectItem value="Pro">PRO</SelectItem>
-                          <SelectItem value="Team">TEAM</SelectItem>
-                          <SelectItem value="Enterprise">ENTERPRISE</SelectItem>
-                          <SelectItem value="Tier 1">TIER 1</SelectItem>
-                          <SelectItem value="Tier 2">TIER 2</SelectItem>
-                          <SelectItem value="Tier 3">TIER 3</SelectItem>
-                        </SelectContent>
-                      </Select>
+                        {isCustomProvider ? '- Remove' : '+ Add New'}
+                      </Button>
                     </div>
+
+                    {isCustomProvider && (
+                      <Input 
+                        placeholder={t('accounts.dialog.providerPlaceholder')}
+                        value={customProvider}
+                        onChange={e => setCustomProvider(e.target.value)}
+                        className="rounded-none border-border h-8 text-[11px] uppercase font-mono"
+                        autoFocus
+                      />
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="package" className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('accounts.dialog.tierLabel')}</Label>
+                    <Select 
+                      value={newAccount.packageType} 
+                      onValueChange={v => setNewAccount({...newAccount, packageType: v})}
+                    >
+                      <SelectTrigger id="package" className="rounded-none bg-background border-border uppercase font-mono text-[10px]">
+                        <SelectValue placeholder="Select Tier" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none bg-background border-border text-foreground">
+                        <SelectItem value="Free">FREE</SelectItem>
+                        <SelectItem value="Pro">PRO</SelectItem>
+                        <SelectItem value="Team">TEAM</SelectItem>
+                        <SelectItem value="Enterprise">ENTERPRISE</SelectItem>
+                        <SelectItem value="Tier 1">TIER 1</SelectItem>
+                        <SelectItem value="Tier 2">TIER 2</SelectItem>
+                        <SelectItem value="Tier 3">TIER 3</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 <div className="space-y-2">
                   <Label htmlFor="limit" className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Quota Limit (Daily)</Label>
@@ -257,7 +297,7 @@ export default function Accounts() {
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <Input 
-                placeholder="Find entry..." 
+                placeholder={t('common.search')} 
                 className="pl-9 h-8 w-64 rounded-none bg-background border-border focus:ring-accent text-xs"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
@@ -273,12 +313,12 @@ export default function Accounts() {
           <Table className="border-collapse">
             <TableHeader>
               <TableRow className="border-b border-border bg-[#EBEAE7] hover:bg-[#EBEAE7]">
-                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">AI Account Email</TableHead>
-                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Provider</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('accounts.tableHeaders.email')}</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('accounts.tableHeaders.provider')}</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Quota Used</TableHead>
-                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Status</TableHead>
-                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Last Sys. Sync</TableHead>
-                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6 text-right">Ops</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('common.status')}</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('accounts.tableHeaders.createdAt')}</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6 text-right">{t('common.actions')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -291,7 +331,7 @@ export default function Accounts() {
               ) : filteredAccounts.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground italic font-serif">
-                    No matching records found in system core.
+                    {t('common.nothingFound')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -310,7 +350,15 @@ export default function Accounts() {
                         </div>
                       </TableCell>
                       <TableCell className="px-6 py-4">
-                        <span className="font-mono text-[11px] uppercase tracking-wider opacity-70">{account.provider}</span>
+                        <div className="flex flex-wrap gap-1">
+                          {account.providers && Array.isArray(account.providers) ? (
+                            account.providers.map((p, idx) => (
+                              <span key={idx} className="font-mono text-[9px] uppercase tracking-wider bg-accent/10 px-1 border border-accent/20 group-hover:border-background/30">{p}</span>
+                            ))
+                          ) : (
+                            <span className="font-mono text-[9px] uppercase tracking-wider opacity-70">{(account as any).provider}</span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="px-6 py-4 w-[240px]">
                         <div className="space-y-1">
@@ -335,9 +383,44 @@ export default function Accounts() {
                           : 'VOID'}
                       </TableCell>
                       <TableCell className="px-6 py-4 text-right">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger render={
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground">
+                              <MoreHorizontal className="w-3.5 h-3.5" />
+                            </Button>
+                          } />
+                          <DropdownMenuContent align="end" className="rounded-none bg-background border-border text-foreground">
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel className="font-serif italic text-[10px] uppercase tracking-widest opacity-60">{t('accounts.actions.title')}</DropdownMenuLabel>
+                              <DropdownMenuSeparator className="bg-border" />
+                              <DropdownMenuItem 
+                                className="font-mono text-[10px] uppercase gap-2 cursor-pointer"
+                                onClick={() => handleStatusChange(account.id, 'active')}
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-[#10B981]" /> {t('accounts.actions.active')}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="font-mono text-[10px] uppercase gap-2 cursor-pointer"
+                                onClick={() => handleStatusChange(account.id, 'cooldown')}
+                              >
+                                <Clock className="w-3 h-3 text-[#F59E0B]" /> {t('accounts.actions.cooldown')}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="font-mono text-[10px] uppercase gap-2 cursor-pointer"
+                                onClick={() => handleStatusChange(account.id, 'banned')}
+                              >
+                                <Ban className="w-3 h-3 text-[#EF4444]" /> {t('accounts.actions.ban')}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="bg-border" />
+                              <DropdownMenuItem 
+                                className="font-mono text-[10px] uppercase gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteAccount(account.id)}
+                              >
+                                <Trash2 className="w-3 h-3" /> {t('accounts.actions.purge')}
+                              </DropdownMenuItem>
+                            </DropdownMenuGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   );

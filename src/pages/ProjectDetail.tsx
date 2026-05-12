@@ -203,7 +203,9 @@ export default function ProjectDetail() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold tracking-tight">{currentAccount.email.split('@')[0]}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter opacity-70">{currentAccount.provider}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter opacity-70">
+                      {Array.isArray(currentAccount.providers) ? currentAccount.providers.join(' | ') : (currentAccount as any).provider}
+                    </p>
                   </div>
                 </div>
                 <div className="space-y-2">

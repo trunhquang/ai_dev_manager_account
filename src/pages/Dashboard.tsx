@@ -28,10 +28,13 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
+import { useLanguage } from '@/contexts/LanguageContext';
+
 export default function Dashboard() {
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const unsubA = onSnapshot(query(collection(db, 'accounts')), (snap) => {
@@ -65,25 +68,25 @@ export default function Dashboard() {
     <div className="space-y-0.5 bg-border border-b border-border">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 bg-background">
         <StatCard 
-          title="Active Accounts" 
+          title={t('dashboard.stats.activeAccounts')} 
           value={`0${activeAccounts}/${totalAccounts}`} 
           subtitle={`${activeAccounts} currently connected`} 
           icon={Users} 
         />
         <StatCard 
-          title="Projects in Play" 
+          title={t('dashboard.stats.projectsInPlay')} 
           value={activeProjects} 
           subtitle="Development in progress" 
           icon={Activity} 
         />
         <StatCard 
-          title="Avg Token Usage" 
+          title={t('dashboard.stats.avgTokenUsage')} 
           value={`${Math.round(chartData.reduce((acc, curr) => acc + curr.usage, 0) / (chartData.length || 1))}%`} 
           subtitle="System efficiency" 
           icon={Zap} 
         />
         <StatCard 
-          title="Quota Alerts" 
+          title={t('dashboard.stats.quotaAlerts')} 
           value={lowTokenAccounts} 
           subtitle="Accounts below 20%" 
           icon={AlertCircle} 
@@ -94,7 +97,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 bg-background">
         <Card className="lg:col-span-2 rounded-none border-0 border-r border-border">
           <CardHeader className="bg-background border-b border-border py-3">
-            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">Account Quota Usage (%)</CardTitle>
+            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">{t('dashboard.charts.usageTitle')}</CardTitle>
           </CardHeader>
           <CardContent className="h-80 p-6">
             <ResponsiveContainer width="100%" height="100%">
@@ -124,7 +127,7 @@ export default function Dashboard() {
 
         <Card className="rounded-none border-0">
           <CardHeader className="bg-background border-b border-border py-3">
-            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">Resource Health</CardTitle>
+            <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">{t('dashboard.charts.statusDistribution')}</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center space-y-8 p-6">
             <div className="h-48 w-full">

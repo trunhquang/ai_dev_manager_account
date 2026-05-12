@@ -19,7 +19,16 @@ export default function Login() {
       toast.success('Access Granted', { description: 'Welcome to AI Dev Manager' });
     } catch (error: any) {
       console.error('Login Error:', error);
-      if (error.code === 'auth/network-request-failed') {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        toast.error(t('login.popupClosed'), { 
+          description: t('login.popupClosedDesc'),
+          action: {
+            label: t('login.openNewTab'),
+            onClick: () => window.open(window.location.href, '_blank')
+          },
+          duration: 10000
+        });
+      } else if (error.code === 'auth/network-request-failed') {
         toast.error(t('login.networkError'), { 
           description: t('login.networkErrorDesc') 
         });

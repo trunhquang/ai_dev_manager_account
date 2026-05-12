@@ -15,7 +15,7 @@ export type AIAccountStatus = 'active' | 'cooldown' | 'banned';
 export interface AIAccount {
   id: string;
   email: string;
-  provider: string;
+  providers: string[];
   packageType: string;
   dailyTokenLimit: number;
   currentTokenLeft: number;
