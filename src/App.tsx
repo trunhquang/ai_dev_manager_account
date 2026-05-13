@@ -6,6 +6,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Projects from './pages/Projects';
+import Providers from './pages/Providers';
 import ProjectDetail from './pages/ProjectDetail';
 import Login from './pages/Login';
 import { Toaster } from '@/components/ui/sonner';
@@ -45,6 +46,7 @@ export default function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/accounts" element={<Accounts />} />
             <Route path="/projects" element={<Projects />} />
+            <Route path="/providers" element={<Providers />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />
           </Route>
           

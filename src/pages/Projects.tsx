@@ -1,8 +1,8 @@
 import * as React from 'react';
 import { useEffect, useState } from 'react';
-import { collection, query, orderBy, onSnapshot, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, Timestamp, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project, ProjectType, ProjectPriority, ProjectStatus, AIAccount } from '@/types';
+import { Project, ProjectType, ProjectPriority, ProjectStatus, AIAccount, Provider } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { 
   Table, 
@@ -31,8 +31,20 @@ import {
   FileCode,
   Smartphone,
   Layers,
-  ChevronRight
+  ChevronRight,
+  MoreHorizontal,
+  Trash2,
+  Eye
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
@@ -43,6 +55,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
+  const [currentProviders, setCurrentProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -57,7 +70,8 @@ export default function Projects() {
     repositoryUrl: '',
     currentAccountId: '',
     priority: 'medium' as ProjectPriority,
-    status: 'active' as ProjectStatus
+    status: 'active' as ProjectStatus,
+    provider: ''
   });
 
   useEffect(() => {
@@ -86,7 +100,12 @@ export default function Projects() {
       }
     );
 
-    return () => { unsubP(); unsubA(); };
+    const prq = query(collection(db, 'providers'), orderBy('name', 'asc'));
+    const unsubPr = onSnapshot(prq, (snapshot) => {
+      setCurrentProviders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Provider)));
+    });
+
+    return () => { unsubP(); unsubA(); unsubPr(); };
   }, [profile]);
 
   const handleAddProject = async (e: React.FormEvent) => {
@@ -106,10 +125,25 @@ export default function Projects() {
         repositoryUrl: '',
         currentAccountId: '',
         priority: 'medium',
-        status: 'active'
+        status: 'active',
+        provider: ''
       });
     } catch (error: any) {
       toast.error('Creation failed', { description: error.message });
+    }
+  };
+
+  const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
+
+  const handleDeleteProject = async () => {
+    if (!projectToDelete || !isAdmin) return;
+    toast.loading('Initiating purge...', { id: 'delete-project' });
+    try {
+      await deleteDoc(doc(db, 'projects', projectToDelete));
+      toast.success('Project Deleted', { id: 'delete-project', description: 'The development stream has been purged.' });
+      setProjectToDelete(null);
+    } catch (error: any) {
+      toast.error('Deletion failed', { id: 'delete-project', description: error.message });
     }
   };
 
@@ -145,9 +179,9 @@ export default function Projects() {
         {isAdmin && (
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger render={
-              <button className={cn(buttonVariants({ variant: 'default' }), "rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm cursor-pointer")}>
+              <Button className="rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm">
                 <Plus className="w-4 h-4 mr-2" /> {t('projects.addBtn')}
-              </button>
+              </Button>
             } />
             <DialogContent className="rounded-none bg-background border-border text-foreground sm:max-w-[500px]">
               <DialogHeader>
@@ -193,18 +227,36 @@ export default function Projects() {
                     </Select>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Assign Asset</Label>
-                  <Select value={newProject.currentAccountId} onValueChange={v => setNewProject({...newProject, currentAccountId: v})}>
-                    <SelectTrigger className="rounded-none border-border">
-                      <SelectValue placeholder="Select resource" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none bg-background border-border">
-                      {accounts.filter(a => a.status === 'active').map(acc => (
-                        <SelectItem key={acc.id} value={acc.id}>{acc.email}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Provider / Resource</Label>
+                    <Select value={newProject.provider} onValueChange={v => setNewProject({...newProject, provider: v})}>
+                      <SelectTrigger className="rounded-none border-border">
+                        <SelectValue placeholder="Select Provider" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none bg-background border-border">
+                        {currentProviders.map(p => (
+                          <SelectItem key={p.id} value={p.name} className="font-mono text-[10px] uppercase">{p.name}</SelectItem>
+                        ))}
+                        {currentProviders.length === 0 && (
+                          <SelectItem value="none" disabled className="text-[10px] font-mono opacity-50 uppercase italic">No providers defined</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Assign Asset</Label>
+                    <Select value={newProject.currentAccountId} onValueChange={v => setNewProject({...newProject, currentAccountId: v})}>
+                      <SelectTrigger className="rounded-none border-border">
+                        <SelectValue placeholder="Select resource" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none bg-background border-border">
+                        {accounts.filter(a => a.status === 'active').map(acc => (
+                          <SelectItem key={acc.id} value={acc.id}>{acc.email}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <DialogFooter className="pt-4">
                   <Button type="submit" className="w-full rounded-none bg-foreground text-background font-serif italic">Authorize Initialization</Button>
@@ -235,6 +287,7 @@ export default function Projects() {
               <TableRow className="border-b border-border bg-[#EBEAE7] hover:bg-[#EBEAE7]">
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('projects.tableHeaders.name')}</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Classification</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Provider / Resource</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('common.status')}</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Linked Resource</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6 text-right"></TableHead>
@@ -264,6 +317,13 @@ export default function Projects() {
                       <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 font-mono text-[11px] uppercase">
                         {getTypeIcon(project.type)}
                         {project.type}
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <div className="space-y-1">
+                        <span className="text-[11px] font-mono font-bold group-hover:text-background transition-colors">
+                          {project.provider || 'N/A'}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-4">
@@ -297,11 +357,48 @@ export default function Projects() {
                       )}
                     </TableCell>
                     <TableCell className="px-6 py-4 text-right">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground" nativeButton={false} render={
-                        <Link to={`/projects/${project.id}`} />
-                      }>
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground" nativeButton={false} render={
+                          <Link to={`/projects/${project.id}`}>
+                            <ChevronRight className="w-4 h-4" />
+                          </Link>
+                        } />
+                        
+                        {isAdmin && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground border-none shadow-none">
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              </Button>
+                            } />
+                            <DropdownMenuContent align="end" className="rounded-none bg-background border-border text-foreground">
+                              <DropdownMenuGroup>
+                                <DropdownMenuLabel className="font-serif italic text-[10px] uppercase tracking-widest opacity-60">{t('projects.actions.title')}</DropdownMenuLabel>
+                                <DropdownMenuSeparator className="bg-border" />
+                                <DropdownMenuItem 
+                                  className="font-mono text-[10px] uppercase gap-2 cursor-pointer"
+                                  render={
+                                    <Link to={`/projects/${project.id}`}>
+                                      <Eye className="w-3 h-3" /> View Detail
+                                    </Link>
+                                  }
+                                />
+                                <DropdownMenuSeparator className="bg-border" />
+                                <DropdownMenuItem 
+                                  className="font-mono text-[10px] uppercase gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setProjectToDelete(project.id);
+                                  }}
+                                  onSelect={() => setProjectToDelete(project.id)}
+                                >
+                                  <Trash2 className="w-3 h-3" /> {t('projects.actions.delete')}
+                                </DropdownMenuItem>
+                              </DropdownMenuGroup>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -310,6 +407,21 @@ export default function Projects() {
           </Table>
         </div>
       </div>
+      <Dialog open={!!projectToDelete} onOpenChange={(open) => !open && setProjectToDelete(null)}>
+        <DialogContent className="rounded-none bg-background border-border text-foreground sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif italic text-lg text-destructive">Confirm Termination</DialogTitle>
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-2">{t('projects.actions.deleteConfirm')}</p>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-[11px] text-muted-foreground opacity-60">This action is irreversible. The development stream and all its metadata will be permanently excised from the core registry.</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setProjectToDelete(null)} className="rounded-none font-serif italic text-xs">Abort</Button>
+            <Button onClick={handleDeleteProject} className="rounded-none bg-destructive text-white hover:bg-destructive/90 font-serif italic text-xs">Confirm Purge</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

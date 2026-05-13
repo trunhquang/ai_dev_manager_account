@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, Timestamp, addDoc, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { AIAccount, AIAccountStatus, Project } from '@/types';
+import { AIAccount, AIAccountStatus, Project, Provider } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { 
@@ -57,15 +57,13 @@ import { useLanguage } from '@/contexts/LanguageContext';
 export default function Accounts() {
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProviders, setCurrentProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<AIAccount | null>(null);
   const [editProviders, setEditProviders] = useState<string[]>([]);
-  const [customProviders, setCustomProviders] = useState<string[]>([]);
-  const [isCustomProvider, setIsCustomProvider] = useState(false);
-  const [customProvider, setCustomProvider] = useState('');
   const { profile } = useAuthStore();
   const { language, setLanguage, t } = useLanguage();
   const isAdmin = profile?.role === 'admin';
@@ -73,7 +71,7 @@ export default function Accounts() {
   // State for new account form
   const [newAccount, setNewAccount] = useState({
     email: '',
-    providers: ['OnSpace'] as string[],
+    providers: [] as string[],
     packageType: 'Pro',
     dailyTokenLimit: 100000,
     status: 'active' as AIAccountStatus,
@@ -107,56 +105,30 @@ export default function Accounts() {
       }
     );
 
+    const prq = query(collection(db, 'providers'), orderBy('name', 'asc'));
+    const unsubscribePr = onSnapshot(prq, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Provider));
+      setCurrentProviders(data);
+      if (newAccount.providers.length === 0 && data.length > 0) {
+        setNewAccount(prev => ({...prev, providers: [data[0].name]}));
+      }
+    });
+
     return () => {
       unsubscribeA();
       unsubscribeP();
+      unsubscribePr();
     };
   }, [profile]);
-
-  useEffect(() => {
-    const q = query(collection(db, 'providers'), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => doc.data().name as string);
-      setCustomProviders(data);
-    });
-    return unsubscribe;
-  }, []);
-
-  const saveNewProvider = async (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) return;
-    
-    const defaults = ['OnSpace', 'OpenAI', 'Anthropic', 'Cursor'];
-    if (defaults.includes(trimmed) || customProviders.includes(trimmed)) return;
-
-    try {
-      await addDoc(collection(db, 'providers'), {
-        name: trimmed,
-        isCustom: true,
-        createdAt: Timestamp.now()
-      });
-    } catch (err) {
-      console.error("Failed to save provider:", err);
-    }
-  };
 
   const handleAddAccount = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const allProviders = [...newAccount.providers];
-      if (isCustomProvider && customProvider) {
-        const trimmed = customProvider.trim();
-        if (trimmed && !allProviders.includes(trimmed)) {
-          allProviders.push(trimmed);
-          await saveNewProvider(trimmed);
-        }
-      }
-
-      if (allProviders.length === 0) throw new Error('At least one provider is required');
+      if (newAccount.providers.length === 0) throw new Error('At least one provider is required');
 
       await addDoc(collection(db, 'accounts'), {
         email: newAccount.email,
-        providers: allProviders,
+        providers: newAccount.providers,
         packageType: newAccount.packageType,
         dailyTokenLimit: newAccount.dailyTokenLimit,
         status: newAccount.status,
@@ -167,11 +139,9 @@ export default function Accounts() {
       });
       toast.success('Account Added', { description: `${newAccount.email} is now in the system.` });
       setIsAddOpen(false);
-      setIsCustomProvider(false);
-      setCustomProvider('');
       setNewAccount({
         email: '',
-        providers: ['OnSpace'],
+        providers: currentProviders.length > 0 ? [currentProviders[0].name] : [],
         packageType: 'Pro',
         dailyTokenLimit: 100000,
         status: 'active',
@@ -196,25 +166,14 @@ export default function Accounts() {
     e.preventDefault();
     if (!editingAccount || !isAdmin) return;
     try {
-      const allProviders = [...editProviders];
-      if (isCustomProvider && customProvider) {
-        const trimmed = customProvider.trim();
-        if (trimmed && !allProviders.includes(trimmed)) {
-          allProviders.push(trimmed);
-          await saveNewProvider(trimmed);
-        }
-      }
-
-      if (allProviders.length === 0) throw new Error('At least one provider is required');
+      if (editProviders.length === 0) throw new Error('At least one provider is required');
 
       await updateDoc(doc(db, 'accounts', editingAccount.id), {
-        providers: allProviders
+        providers: editProviders
       });
       
       toast.success('Account Updated', { description: 'Resource providers synchronized successfully.' });
       setIsEditOpen(false);
-      setIsCustomProvider(false);
-      setCustomProvider('');
     } catch (error: any) {
       toast.error('Update failed', { description: error.message });
     }
@@ -248,8 +207,6 @@ export default function Accounts() {
     }
   };
 
-  const allAvailableProviders = Array.from(new Set(['OnSpace', 'OpenAI', 'Anthropic', 'Cursor', ...customProviders]));
-
   return (
     <div className="space-y-0 text-foreground">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-border bg-background p-6">
@@ -261,9 +218,9 @@ export default function Accounts() {
         {isAdmin && (
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger render={
-              <button className={cn(buttonVariants({ variant: 'default' }), "rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm cursor-pointer")}>
+              <Button className="rounded-none border border-border bg-foreground text-background hover:bg-muted hover:text-foreground transition-all h-9 px-6 font-serif italic text-sm">
                 <Plus className="w-4 h-4 mr-2" /> {t('accounts.addBtn')}
-              </button>
+              </Button>
             } />
             <DialogContent className="rounded-none bg-background border-border text-foreground sm:max-w-[500px]">
               <DialogHeader>
@@ -285,49 +242,27 @@ export default function Accounts() {
                 </div>
                   <div className="space-y-3">
                     <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('accounts.dialog.providerLabel')}</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {allAvailableProviders.map((p) => (
-                        <div key={p} className="flex items-center gap-2 border border-border p-2 hover:bg-accent/50 transition-colors">
+                    <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-2">
+                      {currentProviders.map((p) => (
+                        <div key={p.id} className="flex items-center gap-2 border border-border p-2 hover:bg-accent/50 transition-colors">
                           <input 
                             type="checkbox"
                             className="w-3 h-3 accent-foreground"
-                            checked={newAccount.providers.includes(p)}
+                            checked={newAccount.providers.includes(p.name)}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setNewAccount({...newAccount, providers: [...newAccount.providers, p]});
+                                setNewAccount({...newAccount, providers: [...newAccount.providers, p.name]});
                               } else {
-                                setNewAccount({...newAccount, providers: newAccount.providers.filter(i => i !== p)});
+                                setNewAccount({...newAccount, providers: newAccount.providers.filter(i => i !== p.name)});
                               }
                             }}
                           />
-                          <span className="font-mono text-[10px] uppercase">{p}</span>
+                          <span className="font-mono text-[10px] uppercase truncate">{p.name}</span>
                         </div>
                       ))}
                     </div>
-                  </div>
-                  
-                  <div className="space-y-2 border-t border-border pt-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Custom Providers</Label>
-                      <Button 
-                        type="button"
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-6 text-[9px] uppercase font-mono"
-                        onClick={() => setIsCustomProvider(!isCustomProvider)}
-                      >
-                        {isCustomProvider ? '- Remove' : '+ Add New'}
-                      </Button>
-                    </div>
-
-                    {isCustomProvider && (
-                      <Input 
-                        placeholder={t('accounts.dialog.providerPlaceholder')}
-                        value={customProvider}
-                        onChange={e => setCustomProvider(e.target.value)}
-                        className="rounded-none border-border h-8 text-[11px] uppercase font-mono"
-                        autoFocus
-                      />
+                    {currentProviders.length === 0 && (
+                      <p className="text-[10px] font-mono opacity-50 uppercase italic">No providers defined. Go to Providers tab.</p>
                     )}
                   </div>
 
@@ -496,9 +431,9 @@ export default function Accounts() {
                       <TableCell className="px-6 py-4 text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger render={
-                            <button className={cn(buttonVariants({ variant: 'ghost', size: 'icon' }), "h-7 w-7 rounded-none hover:bg-background hover:text-foreground cursor-pointer")}>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground border-none shadow-none">
                               <MoreHorizontal className="w-3.5 h-3.5" />
-                            </button>
+                            </Button>
                           } />
                           <DropdownMenuContent align="end" className="rounded-none bg-background border-border text-foreground">
                             <DropdownMenuGroup>
@@ -577,50 +512,25 @@ export default function Accounts() {
           <form onSubmit={handleUpdateProviders} className="space-y-4 py-4">
             <div className="space-y-3">
               <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('accounts.dialog.providerLabel')}</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {allAvailableProviders.map((p) => (
-                  <div key={p} className="flex items-center gap-2 border border-border p-2 hover:bg-accent/50 transition-colors">
+              <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-2">
+                {currentProviders.map((p) => (
+                  <div key={p.id} className="flex items-center gap-2 border border-border p-2 hover:bg-accent/50 transition-colors">
                     <input 
                       type="checkbox"
                       className="w-3 h-3 accent-foreground"
-                      checked={editProviders.includes(p)}
+                      checked={editProviders.includes(p.name)}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setEditProviders([...editProviders, p]);
+                          setEditProviders([...editProviders, p.name]);
                         } else {
-                          setEditProviders(editProviders.filter(i => i !== p));
+                          setEditProviders(editProviders.filter(i => i !== p.name));
                         }
                       }}
                     />
-                    <span className="font-mono text-[10px] uppercase">{p}</span>
+                    <span className="font-mono text-[10px] uppercase truncate">{p.name}</span>
                   </div>
                 ))}
               </div>
-            </div>
-            
-            <div className="space-y-2 border-t border-border pt-4">
-              <div className="flex items-center justify-between">
-                <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">Custom Providers</Label>
-                <Button 
-                  type="button"
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-[9px] uppercase font-mono"
-                  onClick={() => setIsCustomProvider(!isCustomProvider)}
-                >
-                  {isCustomProvider ? '- Remove' : '+ Add New'}
-                </Button>
-              </div>
-
-              {isCustomProvider && (
-                <Input 
-                  placeholder={t('accounts.dialog.providerPlaceholder')}
-                  value={customProvider}
-                  onChange={e => setCustomProvider(e.target.value)}
-                  className="rounded-none border-border h-8 text-[11px] uppercase font-mono"
-                  autoFocus
-                />
-              )}
             </div>
 
             <DialogFooter className="pt-4">

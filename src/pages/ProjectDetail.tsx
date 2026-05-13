@@ -9,10 +9,13 @@ import {
   addDoc, 
   Timestamp, 
   setDoc, 
-  getDoc 
+  getDoc,
+  query,
+  orderBy,
+  deleteDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project, AIAccount, ProjectHandoff, ProjectTransfer } from '@/types';
+import { Project, AIAccount, ProjectHandoff, ProjectTransfer, Provider } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,7 +35,8 @@ import {
   CheckCircle2,
   AlertCircle,
   Unlink,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Trash2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
@@ -71,12 +75,15 @@ export default function ProjectDetail() {
 
   const [project, setProject] = useState<Project | null>(null);
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
+  const [currentProviders, setCurrentProviders] = useState<Provider[]>([]);
   const [handoff, setHandoff] = useState<ProjectHandoff | null>(null);
   const [loading, setLoading] = useState(true);
   const [isTransferring, setIsTransferring] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const [isEditingProvider, setIsEditingProvider] = useState(false);
   const [transferData, setTransferData] = useState({ toAccountId: '', reason: '' });
   const [selectedAccountId, setSelectedAccountId] = useState('');
+  const [tempProvider, setTempProvider] = useState('');
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -118,8 +125,20 @@ export default function ProjectDetail() {
       }
     );
 
-    return () => { unsubP(); unsubH(); unsubA(); };
+    const unsubPr = onSnapshot(query(collection(db, 'providers'), orderBy('name', 'asc')), 
+      (snap) => {
+        setCurrentProviders(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Provider)));
+      }
+    );
+
+    return () => { unsubP(); unsubH(); unsubA(); unsubPr(); };
   }, [id, navigate, profile]);
+
+  useEffect(() => {
+    if (project?.provider) {
+      setTempProvider(project.provider);
+    }
+  }, [project]);
 
   const handleUpdateHandoff = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -225,6 +244,34 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleUpdateProvider = async () => {
+    if (!project || !id || !isAdmin) return;
+    try {
+      await updateDoc(doc(db, 'projects', id), {
+        provider: tempProvider
+      });
+      toast.success('Provider Updated');
+      setIsEditingProvider(false);
+    } catch (error: any) {
+      toast.error('Update failed', { description: error.message });
+    }
+  };
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteProject = async () => {
+    if (!id || !isAdmin) return;
+    toast.loading('Initiating purge...', { id: 'delete-detail' });
+    try {
+      await deleteDoc(doc(db, 'projects', id));
+      toast.success('Project Purged', { id: 'delete-detail' });
+      navigate('/projects');
+    } catch (error: any) {
+      toast.error('Purge failed', { id: 'delete-detail', description: error.message });
+      setIsDeleting(false);
+    }
+  };
+
   if (loading || !project) return <div className="h-40 flex items-center justify-center text-zinc-500 uppercase tracking-widest font-mono text-xs">Loading context...</div>;
 
   const currentAccount = accounts.find(a => a.id === project.currentAccountId);
@@ -302,12 +349,56 @@ export default function ProjectDetail() {
           </section>
 
           <section className="bg-background border border-border p-5">
-            <h3 className="text-[11px] uppercase font-mono tracking-widest text-muted-foreground opacity-60 mb-4">Instance Metadata</h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[11px] uppercase font-mono tracking-widest text-muted-foreground opacity-60">Instance Metadata</h3>
+              {isAdmin && !isEditingProvider && (
+                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsEditingProvider(true)}>
+                  <FileEdit className="w-3 h-3 opacity-40 hover:opacity-100" />
+                </Button>
+              )}
+            </div>
             <div className="space-y-0 text-sm">
+              <div className="flex justify-between items-center py-3 border-b border-border/50">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.1em] opacity-70">Provider / Req</span>
+                {isEditingProvider ? (
+                  <div className="flex items-center gap-2">
+                    <Select value={tempProvider} onValueChange={setTempProvider}>
+                      <SelectTrigger className="h-7 w-32 rounded-none border-border font-mono text-[9px] uppercase">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none bg-background border-border">
+                        {currentProviders.map(p => (
+                          <SelectItem key={p.id} value={p.name} className="font-mono text-[10px] uppercase">{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button size="icon" className="h-7 w-7 rounded-none bg-foreground text-background" onClick={handleUpdateProvider}>
+                      <Save className="w-3 h-3" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7 rounded-none" onClick={() => setIsEditingProvider(false)}>
+                      <CheckCircle2 className="w-3 h-3 opacity-30" />
+                    </Button>
+                  </div>
+                ) : (
+                  <span className="text-[12px] font-medium tracking-tight uppercase">{project.provider || 'N/A'}</span>
+                )}
+              </div>
               <MetaRow label="Priority Tier" value={project.priority} />
               <MetaRow label="Active Status" value={project.status} />
               <MetaRow label="Init. Date" value={format(project.createdAt.toDate(), 'MM.dd.yyyy')} />
               <MetaRow label="VCS Link" value={project.repositoryUrl ? 'AUTHORIZED' : 'NONE'} />
+              
+              {isAdmin && (
+                <div className="pt-6 border-t border-border/30 mt-3">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => setIsDeleting(true)}
+                    className="w-full h-9 rounded-none text-[10px] font-mono uppercase tracking-[0.2em] text-destructive hover:bg-destructive hover:text-white transition-all border border-destructive/20 border-dashed"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 mr-2" /> De-provision Stream
+                  </Button>
+                </div>
+              )}
             </div>
           </section>
         </div>
@@ -603,6 +694,22 @@ export default function ProjectDetail() {
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDeleting} onOpenChange={setIsDeleting}>
+        <DialogContent className="rounded-none bg-background border-border text-foreground sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle className="font-serif italic text-lg text-destructive">Confirm Termination</DialogTitle>
+            <p className="text-xs text-muted-foreground font-mono uppercase tracking-widest mt-2">{t('projects.actions.deleteConfirm')}</p>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-[11px] text-muted-foreground opacity-60">This action is irreversible. The development stream and all its metadata will be permanently excised from the core registry.</p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsDeleting(false)} className="rounded-none font-serif italic text-xs">Abort</Button>
+            <Button onClick={handleDeleteProject} className="rounded-none bg-destructive text-white hover:bg-destructive/90 font-serif italic text-xs">Confirm Purge</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

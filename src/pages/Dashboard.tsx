@@ -119,7 +119,7 @@ export default function Dashboard() {
           <CardHeader className="py-3 border-b border-border">
             <CardTitle className="text-[11px] font-serif italic uppercase tracking-[0.1em] text-muted-foreground opacity-70">Resource Activity Pool</CardTitle>
           </CardHeader>
-          <CardContent className="p-0 max-h-[400px] overflow-y-auto">
+          <CardContent className="p-0">
             {accounts.map(acc => {
               const linkedProjects = projects.filter(p => p.linkedAccountIds?.includes(acc.id));
               return (

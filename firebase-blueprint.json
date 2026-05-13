@@ -36,7 +36,8 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "isCustom": { "type": "boolean" },
+        "description": { "type": "string" },
+        "specialInfo": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name"]

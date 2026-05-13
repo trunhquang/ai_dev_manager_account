@@ -95,6 +95,7 @@ service cloud.firestore {
       allow update: if isDeveloper() 
                     && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'currentAccountId'])
                     && isValidProject(incoming());
+      allow delete: if isAdmin();
     }
 
     match /transfers/{transferId} {

@@ -1,3 +1,4 @@
+import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 
@@ -40,16 +41,20 @@ const buttonVariants = cva(
   }
 )
 
-function Button({
+const Button = React.forwardRef<
+  HTMLButtonElement,
+  ButtonPrimitive.Props & VariantProps<typeof buttonVariants>
+>(({
   className,
   variant = "default",
   size = "default",
   nativeButton, // Explicitly destructure to avoid leaking to DOM
   render,       // Explicitly destructure to avoid leaking to DOM
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}, ref) => {
   return (
     <ButtonPrimitive
+      ref={ref}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       nativeButton={nativeButton}
@@ -57,6 +62,7 @@ function Button({
       {...props}
     />
   )
-}
+})
+Button.displayName = "Button"
 
 export { Button, buttonVariants }

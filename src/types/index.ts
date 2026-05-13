@@ -25,6 +25,14 @@ export interface AIAccount {
   createdAt: Timestamp;
 }
 
+export interface Provider {
+  id: string;
+  name: string;
+  description?: string;
+  specialInfo?: string;
+  createdAt: Timestamp;
+}
+
 export type ProjectType = 'backend' | 'frontend' | 'mobile' | 'fullstack';
 export type ProjectPriority = 'low' | 'medium' | 'high';
 export type ProjectStatus = 'active' | 'on_hold' | 'completed';
@@ -39,6 +47,7 @@ export interface Project {
   linkedAccountIds?: string[];
   priority: ProjectPriority;
   status: ProjectStatus;
+  provider?: string;
   createdAt: Timestamp;
 }
 

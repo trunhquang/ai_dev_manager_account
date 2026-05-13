@@ -6,6 +6,7 @@ export const translations = {
       dashboard: 'Dashboard',
       projects: 'Projects',
       accounts: 'Accounts',
+      providers: 'Providers',
       login: 'Login',
       logout: 'Logout',
       settings: 'Settings',
@@ -46,7 +47,7 @@ export const translations = {
     },
     sidebar: {
       brand: 'AI Dev Manager',
-      navMain: 'Main Navigation',
+      navMain: 'Infrastructure & Resources',
       navSecondary: 'Secondary',
       help: 'Help',
       feedback: 'Feedback',
@@ -66,6 +67,11 @@ export const translations = {
         description: 'Set up a new project tracking identifier.',
         nameLabel: 'Project Name',
         statusLabel: 'Internal Status',
+      },
+      actions: {
+        title: 'Stream Actions',
+        delete: 'De-provision Stream',
+        deleteConfirm: 'Are you absolutely sure you want to de-provision this development stream? All associated metadata will be purged.'
       }
     },
     accounts: {
@@ -126,6 +132,7 @@ export const translations = {
       dashboard: 'Bảng điều khiển',
       projects: 'Dự án',
       accounts: 'Tài khoản',
+      providers: 'Nhà cung cấp',
       login: 'Đăng nhập',
       logout: 'Đăng xuất',
       settings: 'Cài đặt',
@@ -166,7 +173,7 @@ export const translations = {
     },
     sidebar: {
       brand: 'AI Dev Manager',
-      navMain: 'Điều hướng chính',
+      navMain: 'Hạ tầng & Tài nguyên',
       navSecondary: 'Phụ trợ',
       help: 'Trợ giúp',
       feedback: 'Góp ý',
@@ -186,6 +193,11 @@ export const translations = {
         description: 'Thiết lập một định danh theo dõi dự án mới.',
         nameLabel: 'Tên Dự án',
         statusLabel: 'Trạng thái nội bộ',
+      },
+      actions: {
+        title: 'Thao tác luồng',
+        delete: 'Xóa luồng phát triển',
+        deleteConfirm: 'Bạn có chắc chắn muốn xóa luồng phát triển này? Tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.'
       }
     },
     accounts: {

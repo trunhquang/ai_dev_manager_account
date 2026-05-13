@@ -2,6 +2,7 @@ import {
   LayoutDashboard, 
   Users, 
   Briefcase, 
+  Layers,
   History, 
   Terminal, 
   LogOut,
@@ -30,6 +31,7 @@ export function AppSidebar() {
 
   const menuItems = [
     { title: t('common.dashboard'), icon: LayoutDashboard, path: '/' },
+    { title: t('common.providers'), icon: Layers, path: '/providers' },
     { title: t('common.accounts'), icon: Users, path: '/accounts' },
     { title: t('common.projects'), icon: Briefcase, path: '/projects' },
   ];
