@@ -32,6 +32,7 @@ import {
   FileCode,
   Smartphone,
   Layers,
+  ChevronDown,
   ChevronRight,
   MoreHorizontal,
   Trash2,
@@ -63,6 +64,7 @@ export default function Projects() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isNewGroupMode, setIsNewGroupMode] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { profile } = useAuthStore();
   const { t } = useLanguage();
   const isAdmin = profile?.role === 'admin';
@@ -198,6 +200,32 @@ export default function Projects() {
       (p.notes && p.notes.toLowerCase().includes(searchLower)) ||
       groupName.toLowerCase().includes(searchLower);
   });
+
+  // Group projects by groupId
+  const groupedProjects = filteredProjects.reduce((acc, project) => {
+    const groupId = project.groupId || 'ungrouped';
+    if (!acc[groupId]) {
+      acc[groupId] = [];
+    }
+    acc[groupId].push(project);
+    return acc;
+  }, {} as Record<string, Project[]>);
+
+  // Get sorted group IDs (existing groups with projects first, then ungrouped if not empty)
+  const sortedGroupIds = [
+    ...groups.map(g => g.id).filter(id => groupedProjects[id]),
+    'ungrouped'
+  ].filter(id => groupedProjects[id]);
+
+  const toggleGroup = (groupId: string) => {
+    const next = new Set(collapsedGroups);
+    if (next.has(groupId)) {
+      next.delete(groupId);
+    } else {
+      next.add(groupId);
+    }
+    setCollapsedGroups(next);
+  };
 
   return (
     <div className="space-y-0 text-foreground">
@@ -379,132 +407,157 @@ export default function Projects() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProjects.map(project => {
-                const projectAccount = accounts.find(a => a.id === project.currentAccountId);
-                return (
-                  <TableRow key={project.id} className="border-b border-border hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
-                    <TableCell className="px-6 py-4">
-                      <div className="space-y-1">
-                        <Link to={`/projects/${project.id}`} className="text-[14px] font-medium leading-none group-hover:underline">
-                          {project.name}
-                        </Link>
-                        {project.notes && (
-                          <p className="text-[11px] text-muted-foreground line-clamp-1 opacity-70 group-hover:opacity-100 group-hover:text-background transition-colors">
-                            {project.notes}
-                          </p>
+              {sortedGroupIds.map(groupId => (
+                <React.Fragment key={groupId}>
+                  {/* Group Header Row */}
+                  <TableRow 
+                    className="bg-[#F4F4F3]/80 hover:bg-[#F4F4F3] border-b border-border/50 cursor-pointer group/header"
+                    onClick={() => toggleGroup(groupId)}
+                  >
+                    <TableCell colSpan={7} className="px-6 py-2 h-auto">
+                      <div className="flex items-center gap-2">
+                        {collapsedGroups.has(groupId) ? (
+                          <ChevronRight className="w-3.5 h-3.5 opacity-40 group-hover/header:translate-x-0.5 transition-transform" />
+                        ) : (
+                          <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover/header:translate-y-0.5 transition-transform" />
                         )}
-                        <div className="flex items-center gap-3">
-                          {project.priority === 'high' && (
-                            <span className="text-[9px] font-mono font-bold text-destructive uppercase bg-destructive/10 group-hover:bg-background/20 px-1 border border-destructive">CRITICAL</span>
-                          )}
-                          <span className="text-[10px] opacity-50 font-mono uppercase tracking-widest leading-none">
-                            INIT: {format(project.createdAt.toDate(), 'yy.MM.dd')}
-                          </span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="space-y-1">
-                        {project.groupId && (
-                          <Badge variant="secondary" className="rounded-none text-[9px] h-4 px-1 font-mono uppercase bg-muted text-muted-foreground">
-                            {groups.find(g => g.id === project.groupId)?.name || 'Unknown Group'}
-                          </Badge>
-                        )}
-                        <div className="text-[11px] font-mono opacity-50 uppercase tracking-widest">
-                          {project.type}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 font-mono text-[11px] uppercase">
-                        {getTypeIcon(project.type)}
-                        {project.type}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="space-y-1">
-                        <span className="text-[11px] font-mono font-bold group-hover:text-background transition-colors">
-                          {project.provider || 'N/A'}
+                        <Layers className="w-3 h-3 opacity-40 ml-1" />
+                        <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] opacity-60">
+                          {groupId === 'ungrouped' ? 'Independent Streams' : groups.find(g => g.id === groupId)?.name}
                         </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <Badge variant="outline" className="rounded-none border-current text-[10px] h-5 px-1.5 uppercase font-semibold">
-                        {project.status.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-6 py-4">
-                      {project.linkedAccountIds && project.linkedAccountIds.length > 0 ? (
-                        <div className="flex flex-wrap items-center gap-2 max-w-[200px]">
-                          {accounts.filter(a => project.linkedAccountIds?.includes(a.id)).map(acc => {
-                            const isCurrent = acc.id === project.currentAccountId;
-                            return (
-                              <div key={acc.id} className="flex items-center gap-1.5 bg-background/5 border border-border/20 group-hover:bg-background/20 group-hover:border-background/30 px-1.5 py-0.5">
-                                <div className={cn(
-                                  "w-1 h-1",
-                                  isCurrent ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/50"
-                                )} />
-                                <span className={cn(
-                                  "text-[10px] font-mono uppercase tracking-tighter opacity-70 group-hover:opacity-100",
-                                  isCurrent && "font-bold"
-                                )}>
-                                  {acc.email.split('@')[0]}
-                                </span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <span className="text-[10px] font-mono italic opacity-40 group-hover:opacity-60 uppercase">No Resources</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground" nativeButton={false} render={
-                          <Link to={`/projects/${project.id}`}>
-                            <ChevronRight className="w-4 h-4" />
-                          </Link>
-                        } />
-                        
-                        {isAdmin && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger render={
-                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground border-none shadow-none">
-                                <MoreHorizontal className="w-3.5 h-3.5" />
-                              </Button>
-                            } />
-                            <DropdownMenuContent align="end" className="rounded-none bg-background border-border text-foreground">
-                              <DropdownMenuGroup>
-                                <DropdownMenuLabel className="font-serif italic text-[10px] uppercase tracking-widest opacity-60">{t('projects.actions.title')}</DropdownMenuLabel>
-                                <DropdownMenuSeparator className="bg-border" />
-                                <DropdownMenuItem 
-                                  className="font-mono text-[10px] uppercase gap-2 cursor-pointer"
-                                  render={
-                                    <Link to={`/projects/${project.id}`}>
-                                      <Eye className="w-3 h-3" /> View Detail
-                                    </Link>
-                                  }
-                                />
-                                <DropdownMenuSeparator className="bg-border" />
-                                <DropdownMenuItem 
-                                  className="font-mono text-[10px] uppercase gap-2 cursor-pointer text-destructive focus:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setProjectToDelete(project.id);
-                                  }}
-                                  onSelect={() => setProjectToDelete(project.id)}
-                                >
-                                  <Trash2 className="w-3 h-3" /> {t('projects.actions.delete')}
-                                </DropdownMenuItem>
-                              </DropdownMenuGroup>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
+                        <span className="text-[9px] font-mono opacity-30">({groupedProjects[groupId].length})</span>
                       </div>
                     </TableCell>
                   </TableRow>
-                );
-              })}
+                  
+                  {!collapsedGroups.has(groupId) && groupedProjects[groupId].map(project => {
+                    const projectAccount = accounts.find(a => a.id === project.currentAccountId);
+                    return (
+                      <TableRow key={project.id} className="border-b border-border hover:bg-foreground hover:text-background group transition-colors cursor-pointer">
+                        <TableCell className="px-6 py-4">
+                          <div className="space-y-1">
+                            <Link to={`/projects/${project.id}`} className="text-[14px] font-medium leading-none group-hover:underline">
+                              {project.name}
+                            </Link>
+                            {project.notes && (
+                              <p className="text-[11px] text-muted-foreground line-clamp-1 opacity-70 group-hover:opacity-100 group-hover:text-background transition-colors">
+                                {project.notes}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-3">
+                              {project.priority === 'high' && (
+                                <span className="text-[9px] font-mono font-bold text-destructive uppercase bg-destructive/10 group-hover:bg-background/20 px-1 border border-destructive">CRITICAL</span>
+                              )}
+                              <span className="text-[10px] opacity-50 font-mono uppercase tracking-widest leading-none">
+                                INIT: {format(project.createdAt.toDate(), 'yy.MM.dd')}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          <div className="space-y-1">
+                            {project.groupId && (
+                              <Badge variant="secondary" className="rounded-none text-[9px] h-4 px-1 font-mono uppercase bg-muted text-muted-foreground">
+                                {groups.find(g => g.id === project.groupId)?.name || 'Unknown Group'}
+                              </Badge>
+                            )}
+                            <div className="text-[11px] font-mono opacity-50 uppercase tracking-widest">
+                              {project.type}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          <div className="flex items-center gap-2 opacity-70 group-hover:opacity-100 font-mono text-[11px] uppercase">
+                            {getTypeIcon(project.type)}
+                            {project.type}
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          <div className="space-y-1">
+                            <span className="text-[11px] font-mono font-bold group-hover:text-background transition-colors">
+                              {project.provider || 'N/A'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          <Badge variant="outline" className="rounded-none border-current text-[10px] h-5 px-1.5 uppercase font-semibold">
+                            {project.status.replace('_', ' ')}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
+                          {project.linkedAccountIds && project.linkedAccountIds.length > 0 ? (
+                            <div className="flex flex-wrap items-center gap-2 max-w-[200px]">
+                              {accounts.filter(a => project.linkedAccountIds?.includes(a.id)).map(acc => {
+                                const isCurrent = acc.id === project.currentAccountId;
+                                return (
+                                  <div key={acc.id} className="flex items-center gap-1.5 bg-background/5 border border-border/20 group-hover:bg-background/20 group-hover:border-background/30 px-1.5 py-0.5">
+                                    <div className={cn(
+                                      "w-1 h-1",
+                                      isCurrent ? "bg-[#10B981]" : "bg-muted-foreground group-hover:bg-background/50"
+                                    )} />
+                                    <span className={cn(
+                                      "text-[10px] font-mono uppercase tracking-tighter opacity-70 group-hover:opacity-100",
+                                      isCurrent && "font-bold"
+                                    )}>
+                                      {acc.email.split('@')[0]}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] font-mono italic opacity-40 group-hover:opacity-60 uppercase">No Resources</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground" nativeButton={false} render={
+                              <Link to={`/projects/${project.id}`}>
+                                <ChevronRight className="w-4 h-4" />
+                              </Link>
+                            } />
+                            
+                            {isAdmin && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger render={
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-none hover:bg-background hover:text-foreground border-none shadow-none">
+                                    <MoreHorizontal className="w-3.5 h-3.5" />
+                                  </Button>
+                                } />
+                                <DropdownMenuContent align="end" className="rounded-none bg-background border-border text-foreground">
+                                  <DropdownMenuGroup>
+                                    <DropdownMenuLabel className="font-serif italic text-[10px] uppercase tracking-widest opacity-60">{t('projects.actions.title')}</DropdownMenuLabel>
+                                    <DropdownMenuSeparator className="bg-border" />
+                                    <DropdownMenuItem 
+                                      className="font-mono text-[10px] uppercase gap-2 cursor-pointer"
+                                      render={
+                                        <Link to={`/projects/${project.id}`}>
+                                          <Eye className="w-3 h-3" /> View Detail
+                                        </Link>
+                                      }
+                                    />
+                                    <DropdownMenuSeparator className="bg-border" />
+                                    <DropdownMenuItem 
+                                      className="font-mono text-[10px] uppercase gap-2 cursor-pointer text-destructive focus:text-destructive"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setProjectToDelete(project.id);
+                                      }}
+                                      onSelect={() => setProjectToDelete(project.id)}
+                                    >
+                                      <Trash2 className="w-3 h-3" /> {t('projects.actions.delete')}
+                                    </DropdownMenuItem>
+                                  </DropdownMenuGroup>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
             </TableBody>
           </Table>
         </div>
