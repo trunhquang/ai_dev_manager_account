@@ -53,6 +53,10 @@ service cloud.firestore {
              && data.status in ['active', 'on_hold', 'completed'];
     }
 
+    function isValidProjectGroup(data) {
+      return data.name is string && data.name.size() > 0;
+    }
+
     function isValidSession(data) {
       return isValidId(data.projectId) && isValidId(data.accountId)
              && data.startTime is timestamp;
@@ -93,8 +97,15 @@ service cloud.firestore {
       allow create: if isAdmin() && isValidProject(incoming());
       allow update: if isAdmin() && isValidProject(incoming());
       allow update: if isDeveloper() 
-                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'currentAccountId'])
+                    && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'currentAccountId', 'notes', 'description', 'groupId'])
                     && isValidProject(incoming());
+      allow delete: if isAdmin();
+    }
+
+    match /project_groups/{groupId} {
+      allow read: if isDeveloper();
+      allow create: if isAdmin() && isValidProjectGroup(incoming());
+      allow update: if isAdmin() && isValidProjectGroup(incoming());
       allow delete: if isAdmin();
     }
 

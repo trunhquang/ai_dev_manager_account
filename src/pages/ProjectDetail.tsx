@@ -15,7 +15,7 @@ import {
   deleteDoc
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project, AIAccount, ProjectHandoff, ProjectTransfer, Provider } from '@/types';
+import { Project, AIAccount, ProjectHandoff, ProjectTransfer, Provider, ProjectGroup } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,6 +44,7 @@ import { useAuthStore } from '@/store/authStore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -74,6 +75,7 @@ export default function ProjectDetail() {
   const isAdmin = profile?.role === 'admin';
 
   const [project, setProject] = useState<Project | null>(null);
+  const [groups, setGroups] = useState<ProjectGroup[]>([]);
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
   const [currentProviders, setCurrentProviders] = useState<Provider[]>([]);
   const [handoff, setHandoff] = useState<ProjectHandoff | null>(null);
@@ -84,6 +86,14 @@ export default function ProjectDetail() {
   const [transferData, setTransferData] = useState({ toAccountId: '', reason: '' });
   const [selectedAccountId, setSelectedAccountId] = useState('');
   const [tempProvider, setTempProvider] = useState('');
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [tempNotes, setTempNotes] = useState('');
+  const [isEditingDescription, setIsEditingDescription] = useState(false);
+  const [tempDescription, setTempDescription] = useState('');
+  const [isEditingGroup, setIsEditingGroup] = useState(false);
+  const [tempGroupId, setTempGroupId] = useState('');
+  const [isNewGroupModeDetail, setIsNewGroupModeDetail] = useState(false);
+  const [newGroupNameDetail, setNewGroupNameDetail] = useState('');
 
   useEffect(() => {
     if (!id || !profile) return;
@@ -131,12 +141,27 @@ export default function ProjectDetail() {
       }
     );
 
-    return () => { unsubP(); unsubH(); unsubA(); unsubPr(); };
+    const unsubG = onSnapshot(query(collection(db, 'project_groups'), orderBy('name', 'asc')), 
+      (snap) => {
+        setGroups(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectGroup)));
+      }
+    );
+
+    return () => { unsubP(); unsubH(); unsubA(); unsubPr(); unsubG(); };
   }, [id, navigate, profile]);
 
   useEffect(() => {
     if (project?.provider) {
       setTempProvider(project.provider);
+    }
+    if (project?.notes) {
+      setTempNotes(project.notes);
+    }
+    if (project?.description) {
+      setTempDescription(project.description);
+    }
+    if (project?.groupId) {
+      setTempGroupId(project.groupId);
     }
   }, [project]);
 
@@ -257,6 +282,57 @@ export default function ProjectDetail() {
     }
   };
 
+  const handleUpdateNotes = async () => {
+    if (!project || !id || !isAdmin) return;
+    try {
+      await updateDoc(doc(db, 'projects', id), {
+        notes: tempNotes
+      });
+      toast.success('Notes Updated');
+      setIsEditingNotes(false);
+    } catch (error: any) {
+      toast.error('Update failed', { description: error.message });
+    }
+  };
+
+  const handleUpdateDescription = async () => {
+    if (!project || !id || !isAdmin) return;
+    try {
+      await updateDoc(doc(db, 'projects', id), {
+        description: tempDescription
+      });
+      toast.success('Description Updated');
+      setIsEditingDescription(false);
+    } catch (error: any) {
+      toast.error('Update failed', { description: error.message });
+    }
+  };
+
+  const handleUpdateGroup = async () => {
+    if (!project || !id || !isAdmin) return;
+    try {
+      let finalGroupId = tempGroupId;
+
+      if (isNewGroupModeDetail && newGroupNameDetail.trim()) {
+        const groupRef = await addDoc(collection(db, 'project_groups'), {
+          name: newGroupNameDetail.trim(),
+          createdAt: Timestamp.now()
+        });
+        finalGroupId = groupRef.id;
+      }
+
+      await updateDoc(doc(db, 'projects', id), {
+        groupId: finalGroupId
+      });
+      toast.success('Group Mapping Updated');
+      setIsEditingGroup(false);
+      setIsNewGroupModeDetail(false);
+      setNewGroupNameDetail('');
+    } catch (error: any) {
+      toast.error('Update failed', { description: error.message });
+    }
+  };
+
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDeleteProject = async () => {
@@ -292,6 +368,16 @@ export default function ProjectDetail() {
             <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-[0.1em] mt-1 opacity-60">
               System Instance: {id?.slice(0, 8)} / Type: {project.type}
             </p>
+            {project.description && (
+              <p className="text-xs text-muted-foreground mt-2 opacity-80 decoration-accent decoration-1">
+                {project.description}
+              </p>
+            )}
+            {project.notes && !isEditingNotes && (
+              <p className="text-xs text-muted-foreground italic mt-2 max-w-2xl px-1 border-l-2 border-border pl-3 py-1">
+                "{project.notes}"
+              </p>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 mt-4 sm:mt-0">
@@ -359,6 +445,64 @@ export default function ProjectDetail() {
             </div>
             <div className="space-y-0 text-sm">
               <div className="flex justify-between items-center py-3 border-b border-border/50">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.1em] opacity-70">Project Summary</span>
+                {isEditingDescription ? (
+                  <div className="flex items-center gap-2 mt-2 w-full">
+                    <Input 
+                      value={tempDescription} 
+                      onChange={e => setTempDescription(e.target.value)}
+                      className="rounded-none border-border font-sans text-xs h-8 flex-grow"
+                    />
+                    <div className="flex items-center gap-1">
+                      <Button size="icon" className="h-7 w-7 rounded-none bg-foreground text-background" onClick={handleUpdateDescription}>
+                        <Save className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-none" onClick={() => setIsEditingDescription(false)}>
+                        <ArrowLeft className="w-3 h-3 opacity-30" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] opacity-60 truncate max-w-[120px]">{project.description || 'No summary'}</span>
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setIsEditingDescription(true)}>
+                        <FileEdit className="w-3 h-3 opacity-40 hover:opacity-100" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-border/50">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.1em] opacity-70">Short Notes</span>
+                {isEditingNotes ? (
+                  <div className="flex items-center gap-2 mt-2 w-full">
+                    <Textarea 
+                      value={tempNotes} 
+                      onChange={e => setTempNotes(e.target.value)}
+                      className="rounded-none border-border font-sans text-xs h-20 resize-none flex-grow"
+                    />
+                    <div className="flex flex-col gap-2">
+                      <Button size="icon" className="h-7 w-7 rounded-none bg-foreground text-background" onClick={handleUpdateNotes}>
+                        <Save className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-none" onClick={() => setIsEditingNotes(false)}>
+                        <ArrowLeft className="w-3 h-3 opacity-30" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] italic opacity-60 truncate max-w-[120px]">{project.notes || 'No description'}</span>
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => setIsEditingNotes(true)}>
+                        <FileEdit className="w-3 h-3 opacity-40 hover:opacity-100" />
+                      </Button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-border/50">
                 <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.1em] opacity-70">Provider / Req</span>
                 {isEditingProvider ? (
                   <div className="flex items-center gap-2">
@@ -381,6 +525,70 @@ export default function ProjectDetail() {
                   </div>
                 ) : (
                   <span className="text-[12px] font-medium tracking-tight uppercase">{project.provider || 'N/A'}</span>
+                )}
+              </div>
+              <div className="flex justify-between items-center py-3 border-b border-border/50">
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-[0.1em] opacity-70">Project Group</span>
+                {isEditingGroup ? (
+                  <div className="flex flex-col gap-2 w-full max-w-[200px] mt-2">
+                    <div className="flex justify-end">
+                      <button 
+                        type="button" 
+                        onClick={() => setIsNewGroupModeDetail(!isNewGroupModeDetail)}
+                        className="text-[9px] font-mono hover:underline opacity-50 hover:opacity-100"
+                      >
+                        {isNewGroupModeDetail ? t('common.cancel') : t('projects.dialog.newGroup')}
+                      </button>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {isNewGroupModeDetail ? (
+                        <Input 
+                          value={newGroupNameDetail} 
+                          onChange={e => setNewGroupNameDetail(e.target.value)} 
+                          className="h-7 rounded-none border-border font-mono text-[9px] uppercase flex-grow" 
+                          placeholder="Group Name..."
+                          autoFocus
+                        />
+                      ) : (
+                        <Select value={tempGroupId} onValueChange={setTempGroupId}>
+                          <SelectTrigger className="h-7 w-32 rounded-none border-border font-mono text-[9px] uppercase">
+                            <SelectValue placeholder="Select Group" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-none bg-background border-border">
+                            <SelectItem value="none" className="font-mono text-[10px] uppercase">NONE</SelectItem>
+                            {groups.map(g => (
+                              <SelectItem key={g.id} value={g.id} className="font-mono text-[10px] uppercase">{g.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      
+                      <Button size="icon" className="h-7 w-7 rounded-none bg-foreground text-background" onClick={handleUpdateGroup}>
+                        <Save className="w-3 h-3" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 rounded-none" onClick={() => {
+                        setIsEditingGroup(false);
+                        setIsNewGroupModeDetail(false);
+                      }}>
+                        <ArrowLeft className="w-3 h-3 opacity-30" />
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-[12px] font-medium tracking-tight uppercase">
+                      {groups.find(g => g.id === project.groupId)?.name || 'N/A'}
+                    </span>
+                    {isAdmin && (
+                      <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => {
+                        setIsEditingGroup(true);
+                        setTempGroupId(project.groupId || 'none');
+                      }}>
+                        <FileEdit className="w-3 h-3 opacity-40 hover:opacity-100" />
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
               <MetaRow label="Priority Tier" value={project.priority} />

@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect, useState } from 'react';
 import { collection, query, orderBy, onSnapshot, Timestamp, addDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Project, ProjectType, ProjectPriority, ProjectStatus, AIAccount, Provider } from '@/types';
+import { Project, ProjectType, ProjectPriority, ProjectStatus, AIAccount, Provider, ProjectGroup } from '@/types';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { 
   Table, 
@@ -23,6 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { 
   Plus, 
@@ -54,11 +55,14 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Projects() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [groups, setGroups] = useState<ProjectGroup[]>([]);
   const [accounts, setAccounts] = useState<AIAccount[]>([]);
   const [currentProviders, setCurrentProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isNewGroupMode, setIsNewGroupMode] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
   const { profile } = useAuthStore();
   const { t } = useLanguage();
   const isAdmin = profile?.role === 'admin';
@@ -66,6 +70,8 @@ export default function Projects() {
   const [newProject, setNewProject] = useState({
     name: '',
     description: '',
+    notes: '',
+    groupId: '',
     type: 'fullstack' as ProjectType,
     repositoryUrl: '',
     currentAccountId: '',
@@ -79,6 +85,7 @@ export default function Projects() {
 
     const pq = query(collection(db, 'projects'), orderBy('createdAt', 'desc'));
     const aq = query(collection(db, 'accounts'), orderBy('email', 'asc'));
+    const gq = query(collection(db, 'project_groups'), orderBy('name', 'asc'));
 
     const unsubP = onSnapshot(pq, 
       (snapshot) => {
@@ -90,6 +97,10 @@ export default function Projects() {
         setLoading(false);
       }
     );
+
+    const unsubG = onSnapshot(gq, (snapshot) => {
+      setGroups(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ProjectGroup)));
+    });
 
     const unsubA = onSnapshot(aq, 
       (snapshot) => {
@@ -105,22 +116,37 @@ export default function Projects() {
       setCurrentProviders(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Provider)));
     });
 
-    return () => { unsubP(); unsubA(); unsubPr(); };
+    return () => { unsubP(); unsubA(); unsubPr(); unsubG(); };
   }, [profile]);
 
   const handleAddProject = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let finalGroupId = newProject.groupId;
+      
+      if (isNewGroupMode && newGroupName.trim()) {
+        const groupRef = await addDoc(collection(db, 'project_groups'), {
+          name: newGroupName.trim(),
+          createdAt: Timestamp.now()
+        });
+        finalGroupId = groupRef.id;
+      }
+
       await addDoc(collection(db, 'projects'), {
         ...newProject,
+        groupId: finalGroupId,
         linkedAccountIds: newProject.currentAccountId ? [newProject.currentAccountId] : [],
         createdAt: Timestamp.now(),
       });
       toast.success('Project Created', { description: 'New development stream initialized.' });
       setIsAddOpen(false);
+      setIsNewGroupMode(false);
+      setNewGroupName('');
       setNewProject({
         name: '',
         description: '',
+        notes: '',
+        groupId: '',
         type: 'fullstack',
         repositoryUrl: '',
         currentAccountId: '',
@@ -164,9 +190,14 @@ export default function Projects() {
     }
   };
 
-  const filteredProjects = projects.filter(p => 
-    p.name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredProjects = projects.filter(p => {
+    const groupName = groups.find(g => g.id === p.groupId)?.name || '';
+    const searchLower = search.toLowerCase();
+    return p.name.toLowerCase().includes(searchLower) ||
+      (p.description && p.description.toLowerCase().includes(searchLower)) ||
+      (p.notes && p.notes.toLowerCase().includes(searchLower)) ||
+      groupName.toLowerCase().includes(searchLower);
+  });
 
   return (
     <div className="space-y-0 text-foreground">
@@ -197,6 +228,59 @@ export default function Projects() {
                     className="rounded-none border-border" 
                     required 
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('projects.dialog.descriptionLabel')}</Label>
+                  <Input 
+                    value={newProject.description} 
+                    onChange={e => setNewProject({...newProject, description: e.target.value})} 
+                    className="rounded-none border-border" 
+                    placeholder="Brief project summary..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('projects.dialog.notesLabel')}</Label>
+                  <Textarea 
+                    value={newProject.notes} 
+                    onChange={e => setNewProject({...newProject, notes: e.target.value})} 
+                    className="rounded-none border-border resize-none h-20 text-xs"
+                    placeholder="Short development notes..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <Label className="font-serif italic text-[11px] uppercase tracking-widest opacity-70">{t('projects.dialog.groupLabel')}</Label>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsNewGroupMode(!isNewGroupMode)}
+                      className="text-[9px] font-mono hover:underline opacity-50 hover:opacity-100"
+                    >
+                      {isNewGroupMode ? t('common.cancel') : t('projects.dialog.newGroup')}
+                    </button>
+                  </div>
+                  {isNewGroupMode ? (
+                    <Input 
+                      value={newGroupName} 
+                      onChange={e => setNewGroupName(e.target.value)} 
+                      className="rounded-none border-border" 
+                      placeholder="e.g. Frontend Core, Backend Services..."
+                      autoFocus
+                    />
+                  ) : (
+                    <Select value={newProject.groupId} onValueChange={v => setNewProject({...newProject, groupId: v})}>
+                      <SelectTrigger className="rounded-none border-border">
+                        <SelectValue placeholder="Select Group (Optional)" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none bg-background border-border">
+                        {groups.map(g => (
+                          <SelectItem key={g.id} value={g.id} className="font-mono text-[10px] uppercase">{g.name}</SelectItem>
+                        ))}
+                        {groups.length === 0 && (
+                          <SelectItem value="none" disabled className="text-[10px] font-mono opacity-50 uppercase italic">No groups defined</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -286,6 +370,7 @@ export default function Projects() {
             <TableHeader>
               <TableRow className="border-b border-border bg-[#EBEAE7] hover:bg-[#EBEAE7]">
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('projects.tableHeaders.name')}</TableHead>
+                <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Group / Logic</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Classification</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">Provider / Resource</TableHead>
                 <TableHead className="font-serif italic text-[11px] uppercase tracking-[0.1em] text-muted-foreground opacity-60 h-10 px-6">{t('common.status')}</TableHead>
@@ -303,6 +388,11 @@ export default function Projects() {
                         <Link to={`/projects/${project.id}`} className="text-[14px] font-medium leading-none group-hover:underline">
                           {project.name}
                         </Link>
+                        {project.notes && (
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 opacity-70 group-hover:opacity-100 group-hover:text-background transition-colors">
+                            {project.notes}
+                          </p>
+                        )}
                         <div className="flex items-center gap-3">
                           {project.priority === 'high' && (
                             <span className="text-[9px] font-mono font-bold text-destructive uppercase bg-destructive/10 group-hover:bg-background/20 px-1 border border-destructive">CRITICAL</span>
@@ -310,6 +400,18 @@ export default function Projects() {
                           <span className="text-[10px] opacity-50 font-mono uppercase tracking-widest leading-none">
                             INIT: {format(project.createdAt.toDate(), 'yy.MM.dd')}
                           </span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <div className="space-y-1">
+                        {project.groupId && (
+                          <Badge variant="secondary" className="rounded-none text-[9px] h-4 px-1 font-mono uppercase bg-muted text-muted-foreground">
+                            {groups.find(g => g.id === project.groupId)?.name || 'Unknown Group'}
+                          </Badge>
+                        )}
+                        <div className="text-[11px] font-mono opacity-50 uppercase tracking-widest">
+                          {project.type}
                         </div>
                       </div>
                     </TableCell>

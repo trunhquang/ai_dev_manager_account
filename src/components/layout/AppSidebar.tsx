@@ -33,6 +33,7 @@ export function AppSidebar() {
     { title: t('common.dashboard'), icon: LayoutDashboard, path: '/' },
     { title: t('common.providers'), icon: Layers, path: '/providers' },
     { title: t('common.accounts'), icon: Users, path: '/accounts' },
+    { title: t('common.projectGroups'), icon: Layers, path: '/project-groups' },
     { title: t('common.projects'), icon: Briefcase, path: '/projects' },
   ];
 

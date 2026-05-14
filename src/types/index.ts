@@ -37,16 +37,26 @@ export type ProjectType = 'backend' | 'frontend' | 'mobile' | 'fullstack';
 export type ProjectPriority = 'low' | 'medium' | 'high';
 export type ProjectStatus = 'active' | 'on_hold' | 'completed';
 
+export interface ProjectGroup {
+  id: string;
+  name: string;
+  description?: string;
+  notes?: string;
+  createdAt: Timestamp;
+}
+
 export interface Project {
   id: string;
   name: string;
   description?: string;
+  groupId?: string;
   type: ProjectType;
   repositoryUrl?: string;
   currentAccountId?: string;
   linkedAccountIds?: string[];
   priority: ProjectPriority;
   status: ProjectStatus;
+  notes?: string;
   provider?: string;
   createdAt: Timestamp;
 }

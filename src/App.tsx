@@ -6,6 +6,7 @@ import { AppLayout } from './components/layout/AppLayout';
 import Dashboard from './pages/Dashboard';
 import Accounts from './pages/Accounts';
 import Projects from './pages/Projects';
+import ProjectGroups from './pages/ProjectGroups';
 import Providers from './pages/Providers';
 import ProjectDetail from './pages/ProjectDetail';
 import Login from './pages/Login';
@@ -45,6 +46,7 @@ export default function App() {
           <Route element={user ? <AppLayout /> : <Navigate to="/login" replace />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/accounts" element={<Accounts />} />
+            <Route path="/project-groups" element={<ProjectGroups />} />
             <Route path="/projects" element={<Projects />} />
             <Route path="/providers" element={<Providers />} />
             <Route path="/projects/:id" element={<ProjectDetail />} />

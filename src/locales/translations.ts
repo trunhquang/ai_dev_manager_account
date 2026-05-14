@@ -7,6 +7,7 @@ export const translations = {
       projects: 'Projects',
       accounts: 'Accounts',
       providers: 'Providers',
+      projectGroups: 'Project Groups',
       login: 'Login',
       logout: 'Logout',
       settings: 'Settings',
@@ -62,10 +63,34 @@ export const translations = {
         status: 'Priority/Status',
         handoff: 'Handoff Status',
       },
+      groups: {
+        title: 'Project Logical Groups',
+        subtitle: 'Organizational clusters for related development streams',
+        addBtn: 'New Group',
+        tableHeaders: {
+          name: 'Group Name',
+          description: 'Description',
+          projectsCount: 'Attached Streams',
+          createdAt: 'Formed At',
+        },
+        dialog: {
+          title: 'Create Project Group',
+          description: 'Establish a new logical container for related projects.',
+          nameLabel: 'Group Name',
+          descriptionLabel: 'Group Description',
+        },
+        actions: {
+          deleteConfirm: 'Delete this group? Projects will be unlinked but not deleted.',
+        }
+      },
       dialog: {
         title: 'Initialize Development stream',
         description: 'Set up a new project tracking identifier.',
         nameLabel: 'Project Name',
+        descriptionLabel: 'Project Description',
+        notesLabel: 'Development Notes',
+        groupLabel: 'Project Group',
+        newGroup: '+ NEW GROUP',
         statusLabel: 'Internal Status',
       },
       actions: {
@@ -133,6 +158,7 @@ export const translations = {
       projects: 'Dự án',
       accounts: 'Tài khoản',
       providers: 'Nhà cung cấp',
+      projectGroups: 'Nhóm dự án',
       login: 'Đăng nhập',
       logout: 'Đăng xuất',
       settings: 'Cài đặt',
@@ -188,10 +214,34 @@ export const translations = {
         status: 'Ưu tiên/Trạng thái',
         handoff: 'Trạng thái bàn giao',
       },
+      groups: {
+        title: 'Nhóm dự án Logic',
+        subtitle: 'Các cụm tổ chức cho các luồng phát triển liên quan',
+        addBtn: 'Nhóm mới',
+        tableHeaders: {
+          name: 'Tên nhóm',
+          description: 'Mô tả',
+          projectsCount: 'Luồng liên kết',
+          createdAt: 'Ngày tạo',
+        },
+        dialog: {
+          title: 'Tạo nhóm dự án',
+          description: 'Thiết lập một vùng chứa logic mới cho các dự án liên quan.',
+          nameLabel: 'Tên nhóm',
+          descriptionLabel: 'Mô tả nhóm',
+        },
+        actions: {
+          deleteConfirm: 'Xóa nhóm này? Các dự án sẽ được hủy liên kết nhưng không bị xóa.',
+        }
+      },
       dialog: {
         title: 'Khởi tạo luồng phát triển',
         description: 'Thiết lập một định danh theo dõi dự án mới.',
         nameLabel: 'Tên Dự án',
+        descriptionLabel: 'Mô tả Dự án',
+        notesLabel: 'Ghi chú Phát triển',
+        groupLabel: 'Nhóm dự án',
+        newGroup: '+ NHÓM MỚI',
         statusLabel: 'Trạng thái nội bộ',
       },
       actions: {

@@ -49,15 +49,29 @@
       "properties": {
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "groupId": { "type": "string" },
         "type": { "type": "string", "enum": ["backend", "frontend", "mobile", "fullstack"] },
         "repositoryUrl": { "type": "string" },
         "currentAccountId": { "type": "string" },
         "linkedAccountIds": { "type": "array", "items": { "type": "string" } },
         "priority": { "type": "string", "enum": ["low", "medium", "high"] },
         "status": { "type": "string", "enum": ["active", "on_hold", "completed"] },
+        "notes": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["name", "type", "priority", "status"]
+    },
+    "ProjectGroup": {
+      "title": "Project Group",
+      "description": "Groups for related projects",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "createdAt"]
     },
     "Transfer": {
       "title": "Transfer",
@@ -124,6 +138,10 @@
     "sessions": {
       "schema": "Session",
       "description": "Usage sessions"
+    },
+    "project_groups": {
+      "schema": "ProjectGroup",
+      "description": "Groups for related projects"
     },
     "handoffs": {
       "schema": "Handoff",
